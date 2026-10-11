@@ -1,0 +1,1490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuryaKiran Flow Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: tabs switch between the call-order flow map, the ML pipeline, measured metrics and findings. */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --card: #ffffff;
+  --border: #d0d7de;
+  --border-subtle: #e4e8ec;
+  --fg: #24292f;
+  --muted: #656d76;
+  --accent: #2a78d6;
+  --accent-subtle: rgba(42, 120, 214, 0.10);
+  --edge: #c9d1d9;
+  --edge-strong: #2a78d6;
+  --bar: #2a78d6;
+  --bar-track: #eef1f4;
+
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+
+  --k-entry: #2563eb;
+  --k-transport: #0891b2;
+  --k-route: #0d9488;
+  --k-middleware: #64748b;
+  --k-controller: #d97706;
+  --k-service: #c2410c;
+  --k-mlapi: #7c3aed;
+  --k-mlcore: #db2777;
+  --k-model: #16a34a;
+  --k-infra: #dc2626;
+
+  --font-body: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0d10; --surface: #14171d; --card: #161a22; --border: #262c36; --border-subtle: #1e232d;
+    --fg: #f0f6fc; --muted: #8b949e; --accent: #3987e5; --accent-subtle: rgba(57, 135, 229, 0.16);
+    --edge: #2b323d; --edge-strong: #60a5fa; --bar: #3987e5; --bar-track: #1e232d;
+    --k-entry: #60a5fa; --k-transport: #22d3ee; --k-route: #2dd4bf; --k-middleware: #94a3b8;
+    --k-controller: #fbbf24; --k-service: #fb923c; --k-mlapi: #a78bfa; --k-mlcore: #f472b6; --k-model: #4ade80; --k-infra: #f87171;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0d10; --surface: #14171d; --card: #161a22; --border: #262c36; --border-subtle: #1e232d;
+  --fg: #f0f6fc; --muted: #8b949e; --accent: #3987e5; --accent-subtle: rgba(57, 135, 229, 0.16);
+  --edge: #2b323d; --edge-strong: #60a5fa; --bar: #3987e5; --bar-track: #1e232d;
+  --k-entry: #60a5fa; --k-transport: #22d3ee; --k-route: #2dd4bf; --k-middleware: #94a3b8;
+  --k-controller: #fbbf24; --k-service: #fb923c; --k-mlapi: #a78bfa; --k-mlcore: #f472b6; --k-model: #4ade80; --k-infra: #f87171;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.page { padding-inline: 20px; padding-block: 20px 32px; display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 600px) { .page { padding-inline: 16px; } }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+header.top h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+header.top h1 span { color: var(--accent); }
+header.top p { margin: 4px 0 0; color: var(--muted); max-width: 72ch; }
+.stats { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+nav.tabs button {
+  font: inherit; font-weight: 500; padding: 8px 14px; background: none; color: var(--muted); cursor: pointer;
+  border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+nav.tabs button:hover { color: var(--fg); }
+nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+section.tab[hidden] { display: none; }
+section.tab { display: flex; flex-direction: column; gap: 16px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.search { position: relative; flex: 1 1 260px; max-width: 360px; }
+.search input {
+  width: 100%; padding: 8px 12px 8px 32px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--surface); color: var(--fg);
+  font: inherit;
+}
+.search input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+button.btn {
+  font: inherit; font-weight: 500; padding: 7px 12px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--card); color: var(--fg); cursor: pointer;
+}
+button.btn:hover { background: var(--surface); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.flows { display: flex; flex-wrap: wrap; gap: 6px; }
+.flows-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-right: 4px; align-self: center; }
+.chip {
+  font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card); color: var(--fg);
+}
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dot); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.canvas-wrap {
+  overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  max-height: calc(100vh - 260px); min-height: 420px;
+}
+.canvas { position: relative; }
+.canvas svg.edges { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.col-head {
+  position: absolute; top: 12px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); text-align: center;
+}
+
+.node {
+  position: absolute; display: flex; align-items: center; gap: 8px;
+  padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--card); color: var(--fg); font: inherit; font-size: 12.5px; font-weight: 500;
+  text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.node .label { overflow: hidden; text-overflow: ellipsis; }
+.node.mono .label { font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; }
+.node:hover { border-color: var(--accent); }
+.node.dim { opacity: 0.28; }
+.node.hit { border-color: var(--edge-strong); }
+.node.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-subtle), 0 0 0 1px var(--accent); }
+.node.flagged::after {
+  content: ''; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--critical);
+}
+.node .step {
+  flex: none; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--accent); color: #ffffff;
+  font-family: var(--font-mono); font-size: 10.5px; display: grid; place-items: center; font-variant-numeric: tabular-nums;
+}
+.node.pulse { animation: pulse 0.9s ease 2; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--accent-subtle); } }
+
+path.edge { fill: none; stroke: var(--edge); stroke-width: 1.2; transition: opacity 0.15s ease; }
+path.edge.back { stroke-dasharray: 4 4; }
+path.edge.hidden-back { display: none; }
+path.edge.dim { opacity: 0.15; }
+path.edge.hit { stroke: var(--edge-strong); stroke-width: 2; opacity: 1; display: inline; }
+
+aside.panel {
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--card);
+  padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0;
+  position: sticky; top: 0; max-height: calc(100vh - 40px); overflow: auto;
+}
+.panel h2 { margin: 0; font-size: 17px; font-weight: 650; text-wrap: balance; }
+.panel .kind { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.panel .file { font-family: var(--font-mono); font-size: 12px; color: var(--muted); word-break: break-all; margin: 0; }
+.panel p { margin: 0; }
+.panel h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.panel .issue { border-left: 3px solid var(--critical); padding: 6px 10px; background: var(--surface); border-radius: 0 6px 6px 0; font-size: 13px; }
+.link-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.link-list button {
+  font: inherit; font-size: 12px; padding: 3px 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border-subtle); background: var(--surface); color: var(--fg);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.link-list button:hover { border-color: var(--accent); }
+.muted { color: var(--muted); }
+
+ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+ol.steps li button {
+  width: 100%; text-align: left; font: inherit; background: none; border: 1px solid transparent; color: var(--fg);
+  padding: 8px; border-radius: 6px; cursor: pointer; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px;
+}
+ol.steps li button:hover { background: var(--surface); border-color: var(--border-subtle); }
+ol.steps .n { font-family: var(--font-mono); font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; padding-top: 2px; }
+ol.steps .t { font-weight: 600; font-size: 13px; display: block; }
+ol.steps .d { color: var(--muted); font-size: 12.5px; display: block; }
+.intro-list { margin: 0; padding-left: 18px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+
+/* ── Report tabs ───────────────────────────────────────────── */
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.card {
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 16px;
+  display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
+.card h2 { margin: 0; font-size: 16px; font-weight: 650; text-wrap: balance; }
+.card h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.card p { margin: 0; }
+.eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.lede { color: var(--muted); max-width: 80ch; margin: 0; }
+h2.section { margin: 8px 0 0; font-size: 18px; font-weight: 700; }
+
+.tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+.tile { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 12px 14px; }
+.tile .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.tile .l { font-size: 12.5px; color: var(--muted); }
+
+code, .mono { font-family: var(--font-mono); font-size: 12px; }
+pre.formula {
+  margin: 0; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border-subtle); border-radius: 6px;
+  font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+ul.plain { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-weight: 600; color: var(--muted); background: var(--surface); font-size: 11.5px; }
+tbody tr:last-child td { border-bottom: none; }
+tr.em td { font-weight: 650; }
+
+/* Horizontal bars: one hue, 4px rounded data-end, label + value in text ink. */
+.bars { display: flex; flex-direction: column; gap: 6px; }
+.bar-row { display: grid; grid-template-columns: minmax(90px, 150px) minmax(0, 1fr) 72px; gap: 10px; align-items: center; font-size: 12.5px; }
+.bar-row .bl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-row .bv { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 12px; }
+.bar-track { position: relative; height: 14px; }
+.bar-track::before { content: ''; position: absolute; inset: 6px 0; background: var(--bar-track); border-radius: 1px; }
+.bar-fill { position: absolute; left: 0; top: 1px; bottom: 1px; background: var(--bar); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bar-row:hover .bar-fill, .bar-row:focus-visible .bar-fill { filter: brightness(1.12); }
+.bar-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.bar-note { font-size: 12px; color: var(--muted); }
+
+#tip {
+  position: fixed; pointer-events: none; z-index: 10; max-width: 280px; padding: 8px 10px; border-radius: 6px;
+  background: var(--card); color: var(--fg); border: 1px solid var(--border); box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  font-size: 12.5px; opacity: 0; transition: opacity 0.1s ease;
+}
+#tip.on { opacity: 1; }
+#tip b { display: block; font-weight: 650; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 2px 8px;
+  border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--fg); white-space: nowrap;
+}
+.badge i { width: 8px; height: 8px; border-radius: 2px; background: var(--c); flex: none; }
+.finding { border-left: 3px solid var(--c); }
+.finding .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.finding .where { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.finding .fix { color: var(--muted); }
+.finding .fix b { color: var(--fg); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .node, path.edge, #tip { transition: none; }
+  .node.pulse { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>Surya<span>Kiran</span> Flow Map</h1>
+      <p>Every page, route, middleware, handler, ML endpoint, model step, Prisma table and external service, laid out in call order, plus the ML pipeline, measured metrics and an analysis of what the models really do. Numbers were measured on 11 Oct 2026 against the code in this repo and the saved models.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-map" aria-controls="panel-map" aria-selected="true">Flow map</button>
+    <button role="tab" id="tab-ml" aria-controls="panel-ml" aria-selected="false">ML pipeline</button>
+    <button role="tab" id="tab-metrics" aria-controls="panel-metrics" aria-selected="false">Metrics &amp; evaluation</button>
+    <button role="tab" id="tab-findings" aria-controls="panel-findings" aria-selected="false">Findings</button>
+  </nav>
+
+  <!-- ═════════════════════ FLOW MAP ═════════════════════ -->
+  <section class="tab" id="panel-map" role="tabpanel" aria-labelledby="tab-map">
+    <div class="toolbar">
+      <label class="search" for="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input id="search" type="search" placeholder="Jump to forecast.py, requireAuth, Predictions..." autocomplete="off" aria-label="Search nodes">
+      </label>
+      <button class="btn" id="clear" type="button">Clear selection</button>
+      <span class="legend"><span><i class="dot" style="--dot: var(--critical)"></i>Red corner dot = known issue (see Findings)</span></span>
+    </div>
+    <div class="flows" id="flows"><span class="flows-label">Flows</span></div>
+    <div class="legend" id="legend"></div>
+    <div class="layout">
+      <div class="canvas-wrap" id="wrap">
+        <div class="canvas" id="canvas">
+          <svg class="edges" id="edges" aria-hidden="true"></svg>
+        </div>
+      </div>
+      <aside class="panel" id="panel" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ ML PIPELINE ═════════════════════ -->
+  <section class="tab" id="panel-ml" role="tabpanel" aria-labelledby="tab-ml" hidden>
+    <p class="lede">The ML service (<code>services/ml</code>, Flask, port 5001) runs two unrelated models. The <b>fault model</b> answers "is this inverter failing, when, why and what will it cost" from hourly readings. The <b>forecast model</b> predicts power for the next minutes from a minute-level CSV. They share nothing: different inputs, different storage, different screens.</p>
+
+    <div class="tiles">
+      <div class="tile"><div class="v">28</div><div class="l">engineered features (fault model)</div></div>
+      <div class="tile"><div class="v">5</div><div class="l">models per inverter: IF, RF, XGB, LGBM, CatBoost</div></div>
+      <div class="tile"><div class="v">22</div><div class="l">saved fault models (14 distinct)</div></div>
+      <div class="tile"><div class="v">12</div><div class="l">forecast input features</div></div>
+      <div class="tile"><div class="v">1,440</div><div class="l">minutes forecast per upload</div></div>
+    </div>
+
+    <h2 class="section">Fault model · <code>inverter_pip_line.py</code></h2>
+    <div class="grid">
+      <div class="card">
+        <span class="eyebrow">Input</span>
+        <h2>Hourly reading</h2>
+        <p>Required: <code>inverter_id, timestamp, power_kw, pv1_power_kw, daily_kwh, inverter_temp_c, ac_voltage_v, dc_voltage_v, ac_current_a, dc_current_a, frequency_hz, alarm_code, price_per_kwh_inr</code>. Optional: <code>ambient_temp_c</code> (defaults to inverter temp − 10) and <code>op_state</code> (defaults to −1, unknown).</p>
+        <p class="muted">Each <code>/predict/single</code> call appends the reading to that inverter's history (last 2,000 kept), saves it to disk, and re-scores the whole history.</p>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Step 1</span>
+        <h2>Feature engineering (28)</h2>
+        <ul class="plain">
+          <li><b>Power (10):</b> power, PV1 power, DC→AC efficiency, delta, 12-h rolling mean/std, EWM(4), 48-h z-score, lag 1 h, lag 6 h</li>
+          <li><b>Temperature (8):</b> temp, thermal rise over 12-h min, temp/power ratio, delta, rolling mean/std, EWM, lag 1 h</li>
+          <li><b>Electrical (8):</b> AC/DC voltage &amp; current, |freq − 50 Hz|, V·I DC power, DC/AC ratio, AC-voltage deviation from 48-h mean</li>
+          <li><b>Alarm (2):</b> alarm code, count of &gt;20 % power drops in last 6 h</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Step 2</span>
+        <h2>Labels</h2>
+        <p>If <code>op_state</code> contains one of the configured fault codes, rows with that code are FAULT. Otherwise an Isolation Forest (100 trees, 5 % contamination) is fit on "healthy" rows (power &gt; 0.1 kW, temp 5–80 °C) and whatever it flags becomes the FAULT label.</p>
+        <p class="muted">The API trains with <code>FAULT_STATES = [2]</code> (<code>ml_service.py</code>); the pipeline default is <code>[3, 8]</code> (Plant 3). All 22 saved models ended up on Isolation Forest proxy labels.</p>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Step 3</span>
+        <h2>Five models</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Model</th><th>Size</th><th>Depth</th><th>LR</th></tr></thead>
+          <tbody>
+            <tr><td>Isolation Forest</td><td>100 trees</td><td>–</td><td>–</td></tr>
+            <tr><td>Random Forest</td><td>200 trees</td><td>12</td><td>–</td></tr>
+            <tr><td>XGBoost</td><td>300 trees</td><td>6</td><td>0.05</td></tr>
+            <tr><td>LightGBM</td><td>300 trees</td><td>6</td><td>0.05</td></tr>
+            <tr><td>CatBoost</td><td>300 iters</td><td>6</td><td>0.05</td></tr>
+          </tbody>
+        </table></div>
+        <p class="muted">Class imbalance handled by <code>scale_pos_weight</code> / class weights. Features standardised. 80/20 temporal train/validation split in <code>/train</code>.</p>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Prediction 1 · Is it faulty?</span>
+        <h2>Weighted ensemble</h2>
+<pre class="formula">wᵢ    = max(AUCᵢ − 0.5, 0) / Σ max(AUCⱼ − 0.5, 0)
+score = Σ wᵢ · Pᵢ(fault) + 0.10 · [≥ 3 of 4 models say fault]
+FAULT ≥ 0.30   WARNING ≥ 0.15   NORMAL otherwise</pre>
+        <p class="muted">The Isolation Forest is trained but not part of the score. Backend maps to the UI: risk_score = round(score × 100); Critical if status FAULT or ≥ 80, High if ≥ 50.</p>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Prediction 2 · When?</span>
+        <h2>Time to fault</h2>
+<pre class="formula">fit a line to the last 48 hourly scores
+reliable if slope &gt; 0 and R² ≥ 0.10
+ETA_h = (0.30 − current) / slope</pre>
+        <p class="muted">Otherwise "No fault trend". If the score is already above 0.30 the ETA is ~0 h.</p>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Prediction 3 · Why?</span>
+        <h2>Root cause</h2>
+        <p>Global feature importance blended 50 % CatBoost, 25 % RF, 25 % XGBoost gain, summed into five categories: Power / Efficiency, Thermal, Grid / Electrical, DC / String, Composite. The largest is the "primary cause".</p>
+        <p class="muted">It describes the trained model, not the current reading, so it is the same answer every time for a given inverter.</p>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Prediction 4 · Cost</span>
+        <h2>15-day financial loss</h2>
+<pre class="formula">project score 15 days on the 48-h slope
+score → degradation:  &lt;0.15: 0 %   0.15–0.30: 5–20 %
+                      0.30–0.60: 20–60 %   ≥0.60: 60–100 %
+loss ₹ = avg daily kWh (30 d) × degradation × ₹/kWh</pre>
+      </div>
+    </div>
+
+    <h2 class="section">Forecast model · <code>forecast.py</code></h2>
+    <div class="grid">
+      <div class="card">
+        <span class="eyebrow">Input</span>
+        <h2>Minute-level CSV</h2>
+        <p><code>timestamp, inverter_id, hour, minute, sin_time, cos_time, power_t-1, power_t-3, power_t-5, power_t-10, rolling_mean_5, rolling_std_5, pv_voltage, pv_current</code>, optional <code>target_power</code> (falls back to <code>power_t-1</code>). Needs ≥ 15 rows per inverter.</p>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Power</span>
+        <h2>XGBoost + 2 baselines</h2>
+<pre class="formula">XGBRegressor(300 trees, depth 5, lr 0.05) on the 12 features
+recursive: each prediction becomes the next step's lag
+exp  = last value repeated
+lin  = 10-minute slope, extrapolated
+w    = 1 / MAE on last 30 rows (one-step), normalised
+power = w_xgb·xgb + w_exp·exp + w_lin·lin   (1,440 steps)</pre>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Risk</span>
+        <h2>Risk score series</h2>
+<pre class="formula">start = last value of 0.6·power-drop + 0.4·volatility
+each minute: + (0.05 − r)·0.02  + power-change term
+             + uniform(−0.005, 0.015) random noise
+smooth with 5-minute rolling mean</pre>
+        <p class="muted">Not a trained model. Contains unseeded random noise, so two uploads of the same CSV give different risk curves.</p>
+      </div>
+      <div class="card">
+        <span class="eyebrow">Storage</span>
+        <h2>Where forecasts live</h2>
+        <p>The ML service keeps forecasts in memory (<code>FORECAST_STORE</code>, lost on restart). The backend copies all 1,440 points into the <code>ForecastPoint</code> table and serves those when the ML service has nothing, which is why forecasts survive restarts.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ METRICS ═════════════════════ -->
+  <section class="tab" id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics" hidden>
+    <p class="lede">Three different sources, which answer different questions. The research notebooks show what the approach can achieve with real labels. The saved models show what actually runs in the app. The forecast backtest re-trains the production forecast code on the CSVs already uploaded and scores it on the last day it never saw.</p>
+
+    <h2 class="section">1 · Research notebook, Plant 3 (real fault labels)</h2>
+    <div class="tiles">
+      <div class="tile"><div class="v">152,848</div><div class="l">train rows · 1 Mar 2024 → 20 Oct 2025 · 6,029 faults</div></div>
+      <div class="tile"><div class="v">38,212</div><div class="l">test rows · 20 Oct 2025 → 2 Mar 2026 · 1,061 faults</div></div>
+      <div class="tile"><div class="v">0.989</div><div class="l">ensemble F1 on the held-out period</div></div>
+      <div class="tile"><div class="v">1 / 1,061</div><div class="l">faults missed by the ensemble</div></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h2>F1 score by model (test set)</h2>
+        <p class="bar-note">Fault = <code>op_state</code> 3 or 8. Temporal 80/20 split. Hover a bar for the confusion matrix.</p>
+        <div class="bars" id="chart-p3-f1"></div>
+      </div>
+      <div class="card">
+        <h2>All metrics</h2>
+        <div class="table-wrap"><table id="table-p3"></table></div>
+        <p class="bar-note">Isolation Forest was scored on a slightly different split (30,583 test rows, 1,297 faults). Ensemble FP derived from its precision.</p>
+      </div>
+    </div>
+
+    <h2 class="section">2 · Research notebook, Plant 1 (no faults in the test period)</h2>
+    <div class="grid">
+      <div class="card">
+        <h2>False alarm rate on healthy data</h2>
+        <p class="bar-note">The Plant 1 test set has zero fault rows, so recall, precision and AUC are undefined. The only thing measurable is how often each model raises an alarm when nothing is wrong (1 − specificity). Lower is better.</p>
+        <div class="bars" id="chart-p1-fpr"></div>
+        <p class="bar-note">2,270,556 scored inverter-rows; LSTM was run on a 2,269-row subset and the ensemble on 54,756.</p>
+      </div>
+      <div class="card">
+        <h2>What this tells you</h2>
+        <ul class="plain">
+          <li>On Plant 3, with real labels, the supervised models are near-perfect; the unsupervised ones (Isolation Forest, LSTM autoencoder) are weak (F1 0.09 and 0.00).</li>
+          <li>On Plant 1 there were too few faults for supervised training, so models learned Isolation Forest proxy labels and still fire on 8–12 % of healthy readings.</li>
+          <li>The production app trains like Plant 1: proxy labels. Section 3 shows the result.</li>
+          <li>Plant 3 scores this high are worth one more check: <code>alarm_code</code> is an input feature and may move in lock-step with <code>op_state</code>. Re-running without it would show whether the model predicts faults or reads the alarm.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 class="section">3 · Production fault models (<code>saved_models/</code>)</h2>
+    <div class="tiles">
+      <div class="tile"><div class="v">22 / 22</div><div class="l">trained on Isolation Forest proxy labels</div></div>
+      <div class="tile"><div class="v">0.99–1.00</div><div class="l">stored "AUC": agreement with the proxy labels, not with real faults</div></div>
+      <div class="tile"><div class="v">≈ 30 %</div><div class="l">of stored readings scored FAULT (2,000-row models)</div></div>
+      <div class="tile"><div class="v">15 / 22</div><div class="l">inverters currently in FAULT status</div></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h2>Share of history scored FAULT</h2>
+        <p class="bar-note">One bar per distinct model (the six byte-identical copies are grouped). Real fault codes appear in 0–0.15 % of the same rows.</p>
+        <div class="bars" id="chart-prod-fault"></div>
+      </div>
+      <div class="card">
+        <h2>Against the few real labels that exist</h2>
+        <p class="bar-note">Five inverters have a handful of <code>op_state = 2</code> rows in their history (1–2 each). Scored with the production threshold (0.30). These rows overlap training data, so this is an upper bound.</p>
+        <div class="table-wrap"><table id="table-prod-real"></table></div>
+        <p class="bar-note">Precision 0.002–0.003 means about 1 real fault per 300–600 alarms. With so few positives, treat recall and AUC as anecdotal.</p>
+      </div>
+      <div class="card">
+        <h2>Ensemble weights collapse to equal</h2>
+        <p>Because every classifier copies the same proxy labels almost perfectly, their AUCs are all ≈ 0.995 and the AUC-based weights come out 0.24–0.26 each. The weighting scheme does nothing in production; the ensemble is a plain average.</p>
+        <div class="table-wrap"><table id="table-prod-weights"></table></div>
+      </div>
+      <div class="card">
+        <h2>Root cause share (mean of 14 distinct models)</h2>
+        <div class="bars" id="chart-rca"></div>
+        <p class="bar-note">Every one of the 22 inverters reports "Power / Efficiency Loss" as its primary cause.</p>
+      </div>
+      <div class="card">
+        <h2>Top 10 features (blended importance)</h2>
+        <div class="bars" id="chart-feat"></div>
+        <p class="bar-note">The two biggest drivers are the current power and the power one hour ago, which is consistent with models that learned "is power unusual" from the Isolation Forest.</p>
+      </div>
+      <div class="card">
+        <h2>Time-to-fault and loss outputs</h2>
+        <ul class="plain">
+          <li>ETA: 21 of 22 inverters return "No fault trend"; INV-01 returns "~0.0 hours" (already past the threshold).</li>
+          <li>15-day loss: ₹0 to ₹106,042 for most inverters, but <b>INV-267: ₹508,196,082</b>, driven by an unrealistic <code>daily_kwh</code> in its history. The loss formula has no bounds.</li>
+          <li>Stored history spans Apr 2024 → Mar 2026: training data with live app readings appended on top, scored together.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 class="section">4 · Forecast model backtest</h2>
+    <p class="lede">Method: for each uploaded CSV, train exactly as <code>/forecast/upload</code> does on everything except the last day (last 110 rows for the small INV-08 file), then forecast that day and compare to what happened. MAE in kW; lower is better. "One-step" uses the true lag values each minute, which the app never has for the future; it is shown only as a ceiling.</p>
+    <div class="grid" id="bt-charts"></div>
+    <div class="card">
+      <h2>Backtest table</h2>
+      <div class="table-wrap"><table id="table-bt"></table></div>
+      <p class="bar-note">INV-04 and INV-271 were uploaded from the same file and give identical results. "Seasonal" = yesterday's value at the same minute.</p>
+    </div>
+  </section>
+
+  <!-- ═════════════════════ FINDINGS ═════════════════════ -->
+  <section class="tab" id="panel-findings" role="tabpanel" aria-labelledby="tab-findings" hidden>
+    <p class="lede">What the measurements above mean for the product, most severe first. Each item names where it lives and what would fix it. Issues already fixed during the codebase cleanup (risk scale, forecast 404s, auth bypass, encoding crash, input bounds on <code>/predict</code>) are not repeated here.</p>
+    <div class="flows" id="finding-filter"><span class="flows-label">Show</span></div>
+    <div class="grid" id="findings"></div>
+  </section>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+// ═══════════════════════════ DATA ═══════════════════════════
+const COLUMNS = [
+  { key: 'entry', title: 'Pages & widgets', kind: 'React page or component', color: '--k-entry' },
+  { key: 'transport', title: 'Client transport', kind: 'Client transport', color: '--k-transport' },
+  { key: 'route', title: 'Backend routes', kind: 'HTTP route (Express :5000)', color: '--k-route', mono: true },
+  { key: 'middleware', title: 'Middleware', kind: 'Middleware', color: '--k-middleware' },
+  { key: 'controller', title: 'Handlers', kind: 'Controller / route handler', color: '--k-controller' },
+  { key: 'service', title: 'Backend services', kind: 'Service', color: '--k-service' },
+  { key: 'mlapi', title: 'ML service API', kind: 'Flask endpoint (:5001)', color: '--k-mlapi', mono: true },
+  { key: 'mlcore', title: 'ML logic', kind: 'Model / algorithm', color: '--k-mlcore' },
+  { key: 'model', title: 'Prisma tables', kind: 'Table (PostgreSQL)', color: '--k-model' },
+  { key: 'infra', title: 'Infra & external', kind: 'Infra / external', color: '--k-infra' },
+];
+
+// [id, column, label, file, description, issue?]
+const NODE_ROWS = [
+  ['pg_landing', 'entry', 'Landing', 'frontend/src/pages/Landing.jsx', 'Marketing page with GSAP animations; every call to action navigates to /login.'],
+  ['pg_auth', 'entry', 'Login / Register', 'frontend/src/pages/Login.jsx, Register.jsx', 'Register posts name, email and password; login stores the returned JWT and user through AuthContext and opens /dashboard.'],
+  ['ctx_auth', 'entry', 'AuthContext + ProtectedRoute', 'frontend/src/context/AuthContext.jsx, layouts/ProtectedRoute.jsx', 'Holds the token and user in localStorage (suryakiran_token / suryakiran_user). ProtectedRoute redirects to /login without a token. AppLayout renders the sidebar and Google Translate widget.', 'The Analytics page is routed (/analytics) but missing from the sidebar, so users cannot reach it.'],
+  ['pg_dash', 'entry', 'Dashboard', 'frontend/src/pages/Dashboard.jsx', 'Polls fleet summary, inverters and alerts every 5 s. Plant output = sum of each inverter\'s latest power_kw; risk gauge = (15·high + 5·medium) / total. Hosts the prediction grid, CSV upload modal, insights feed and inverter table.'],
+  ['w_grid', 'entry', 'InverterPredictionGrid', 'frontend/src/components/dashboard/InverterPredictionGrid.jsx', 'For each trained inverter, loads its 1,440-minute forecast once and shows t+1, t+2, t+3 minutes from the current clock time. Inverters without an uploaded forecast show "Unpredicted".', 'The risk % shown here comes from the forecast risk series, which is mean-reverting random noise, not a model output.'],
+  ['w_upload', 'entry', 'CSVUploadModal', 'frontend/src/components/dashboard/CSVUploadModal.jsx', 'Checks the CSV has the 14 forecast columns and ≥ 15 rows, then posts the whole file as text. Up to 5 files, 20 MB each.'],
+  ['pg_inv', 'entry', 'Inverters (map + add)', 'frontend/src/pages/Inverters.jsx, components/dashboard/SolarPlantMap.jsx', 'Block map of inverters coloured by risk; clicking opens the detail page. The Add Inverter form sends one full hourly reading to POST /predict, which creates the inverter and runs the fault model.'],
+  ['pg_detail', 'entry', 'InverterDetail', 'frontend/src/pages/InverterDetail.jsx', 'Risk ring, AI explanation, ETA, primary cause, loss, top features, latest telemetry and related alerts / maintenance. Can raise a maintenance ticket and ask Copilot about this inverter.', 'The "D+1…D+3" risk trend repeats the current score, and the "SHAP" chart is global model importance, not SHAP values.'],
+  ['pg_copilot', 'entry', 'Copilot', 'frontend/src/pages/Copilot.jsx', 'Chat UI. Renders <ui_table> blocks in answers as tables and sanitises HTML with DOMPurify.'],
+  ['pg_alerts', 'entry', 'Alerts', 'frontend/src/pages/Alerts.jsx', 'Lists alerts with severity and the inverter\'s latest risk score; acknowledge or dismiss (dismiss deletes the row).'],
+  ['pg_maint', 'entry', 'Maintenance', 'frontend/src/pages/Maintenance.jsx', 'Ticket board filtered by status; status changes and resolution notes go through PUT /api/maintenance/:id.'],
+  ['pg_energy', 'entry', 'Energy Impact', 'frontend/src/pages/EnergyImpact.jsx', 'Loss, revenue-at-risk and savings cards plus a monthly comparison chart.', 'Numbers come from a fixed heuristic (50 kWh/day per at-risk inverter × ₹35) and a hard-coded monthly chart, not from the ML loss forecast.'],
+  ['pg_analytics', 'entry', 'Analytics', 'frontend/src/pages/Analytics.jsx', 'Daily performance ratio (avg power / avg PV1 power) and energy loss by block.', 'The "predicted" performance ratio is the actual value + 2, hard-coded in the backend.'],
+  ['pg_reports', 'entry', 'Reports', 'frontend/src/pages/Reports.jsx', 'Lists report records and creates new ones; PDF export with jsPDF in the browser.'],
+
+  ['api', 'transport', 'api.js (axios)', 'frontend/src/services/api.js', 'Single axios client for VITE_API_BASE_URL (default http://localhost:5000), 5-minute timeout for large uploads. Adds the Bearer token, and on any 401 outside /api/auth clears the session and redirects to /login. Maps backend rows to UI shapes (risk ≥ 80 High, ≥ 50 Medium; no prediction = Untrained).'],
+
+  ['r_register', 'route', 'POST /api/auth/register', 'backend/src/routes/auth.js', 'Public. Creates a user with a bcrypt-hashed password.'],
+  ['r_login', 'route', 'POST /api/auth/login', 'backend/src/routes/auth.js', 'Public. Returns a 1-day JWT and the user.'],
+  ['r_health', 'route', 'GET /health', 'backend/src/routes/health.js', 'Public. Runs SELECT 1 and reports database connected / disconnected.'],
+  ['r_inv', 'route', 'GET /api/inverters', 'backend/src/routes/inverters.js', 'All inverters with their latest prediction and telemetry. Polled every 5 s by the dashboard.'],
+  ['r_inv_id', 'route', 'GET /api/inverters/:id', 'backend/src/routes/inverters.js', 'One inverter with latest telemetry and latest prediction (including model_output JSON).'],
+  ['r_predict', 'route', 'POST /predict', 'backend/src/routes/predict.js', 'Takes one hourly reading, validates it, runs the fault model, stores telemetry + prediction, and raises an alert for High / Critical.'],
+  ['r_alerts', 'route', 'GET · PATCH /api/alerts', 'backend/src/routes/alerts.js', 'List alerts; PATCH /:id/status acknowledges (prefixes [ACK] to the message) or dismisses (deletes).'],
+  ['r_maint', 'route', 'GET · POST · PUT /api/maintenance', 'backend/src/routes/maintenance.js', 'Maintenance tickets; POST upserts the inverter first.'],
+  ['r_reports', 'route', 'GET · POST /api/reports', 'backend/src/routes/reports.js', 'Report metadata records.'],
+  ['r_energy', 'route', 'GET /api/energy/impact', 'backend/src/routes/energy.js', 'Fleet loss estimate from inverter statuses.'],
+  ['r_analytics', 'route', 'GET /api/analytics', 'backend/src/routes/analytics.js', 'Performance ratio per day over ?days= of telemetry.'],
+  ['r_copilot', 'route', 'POST /api/copilot/chat', 'backend/src/routes/copilot.js', 'Question in, answer out. Also mounted at /api/chat for backward compatibility.'],
+  ['r_fup', 'route', 'POST /api/forecast/upload', 'backend/src/routes/forecast.js', 'Stores the CSV, trains forecasts in the ML service, copies them into ForecastPoint, and records a prediction per inverter.'],
+  ['r_fnext', 'route', 'GET /api/forecast/next', 'backend/src/routes/forecast.js', 't+1..t+3 for ?inverter_id&current_minute; falls back to cached ForecastPoint rows when the ML service has none.'],
+  ['r_fall', 'route', 'GET /api/forecast/all', 'backend/src/routes/forecast.js', 'Full 1,440-minute forecast; refreshes the DB cache from the ML service or serves the cache; 404 when neither has it.'],
+
+  ['m_app', 'middleware', 'server.js stack', 'backend/src/server.js', 'CORS (all origins), 500 MB JSON body limit for CSV uploads, Cache-Control: no-store, Swagger at /api-docs.'],
+  ['m_auth', 'middleware', 'requireAuth', 'backend/src/middleware/auth.js', 'Verifies the Bearer JWT with JWT_SECRET and sets req.user. Missing, forged or expired tokens get 401. Applied to every route except /api/auth and /health.'],
+  ['m_valid', 'middleware', 'validatePredictionInput', 'backend/src/middleware/validation.js', 'Zod schema for /predict: all reading fields required, coerced to numbers and bounded (e.g. power 0–100,000 kW, frequency 0–100 Hz).'],
+  ['m_err', 'middleware', 'errorHandler', 'backend/src/middleware/errorHandler.js', 'Zod errors → 400 with the failing field; everything else → 500 with the message.'],
+
+  ['c_auth', 'controller', 'authController', 'backend/src/controllers/authController.js', 'register: rejects duplicate email, hashes with bcrypt (10 rounds). login: compares hash, signs { id, email, role, name }.'],
+  ['c_inv', 'controller', 'inverterController', 'backend/src/controllers/inverterController.js', 'List with latest prediction + telemetry per inverter; get by id; createInverter (POST /api/inverters, not used by the UI).'],
+  ['c_predict', 'controller', 'predictController', 'backend/src/controllers/predictController.js', 'Calls mlService, upserts the inverter (At Risk if High/Critical), writes Telemetry + Predictions in one transaction, and creates an Alert for High/Critical.'],
+  ['h_forecast', 'controller', 'forecast route handlers', 'backend/src/routes/forecast.js', 'Upload: ensure inverters exist → save ForecastUpload → POST to ML → copy each forecast into ForecastPoint → mark inverter and add a prediction (risk × 100). Next/all: ML first, DB cache second.'],
+  ['h_copilot', 'controller', 'processCopilotRequest', 'backend/src/routes/copilot.js', 'Three passes: Gemini writes a JSON retrieval plan → the plan runs as read-only Prisma queries on 4 whitelisted tables → Gemini answers from the retrieved rows. Falls back to a canned reply when Gemini fails.', 'The schema given to Gemini omits Predictions, so it cannot answer risk-score questions.'],
+  ['h_misc', 'controller', 'alerts / maintenance / reports / energy / analytics', 'backend/src/routes/*.js', 'Inline route handlers doing direct Prisma reads and writes.'],
+
+  ['s_ml', 'service', 'mlService.getPrediction', 'backend/src/services/mlService.js', 'POSTs the reading to /predict/single (30 s timeout). Maps score → risk 0–100 and level, builds the explanation text. Any error (no model, service down) returns risk_level "Untrained".'],
+  ['s_llm', 'service', 'callLLM (Gemini REST)', 'backend/src/routes/copilot.js', 'generateContent on GEMINI_MODEL (default gemini-2.5-flash) with a 30 s timeout; strips ``` fences when JSON is expected.'],
+  ['s_plan', 'service', 'retrieval plan executor', 'backend/src/routes/copilot.js', 'Only Inverters, Telemetry, Alerts, Maintenance and only findMany / findFirst / findUnique. DATETIME_* placeholders become real dates.'],
+  ['s_fcache', 'service', 'saveForecastPoints / getDbForecastAll', 'backend/src/routes/forecast.js', 'Replaces an inverter\'s ForecastPoint rows with the latest 1,440 points; rebuilds a forecast response from them.'],
+
+  ['f_app', 'mlapi', 'app.py', 'services/ml/app.py', 'Flask app with CORS; registers ml, chat and forecast blueprints. Loads the repo-root .env; UTF-8 stdout so progress symbols cannot crash requests.'],
+  ['e_single', 'mlapi', 'POST /predict/single', 'services/ml/ml_routes.py', 'The only fault-model endpoint the backend calls. Loads the inverter\'s model, appends the reading to its history (last 2,000), saves to disk, re-scores the full history and returns 4 predictions + metrics. 404 when no model exists.', 'Re-scores and rewrites up to 2,000 rows on every reading; history mixes training data with live readings.'],
+  ['e_train', 'mlapi', 'POST /train', 'services/ml/ml_routes.py', 'Trains a fault model from ≥ 100 hourly readings (80/20 split) and saves it.', 'Nothing in the backend or UI calls this. New inverters can never get a fault model from the app.'],
+  ['e_predict', 'mlapi', 'POST /predict · GET /status', 'services/ml/ml_routes.py', 'Batch prediction and the list of trained inverter ids. Not called by the backend.'],
+  ['e_fup', 'mlapi', 'POST /forecast/upload', 'services/ml/forecast.py', 'Parses the CSV, and for every inverter with ≥ 15 rows trains a model and pre-computes 1,440 minutes of power and risk.'],
+  ['e_fread', 'mlapi', 'GET /forecast/next · /all', 'services/ml/forecast.py', 'Reads the in-memory forecast: three points from current_minute, or all 1,440.'],
+  ['e_chat', 'mlapi', 'POST /chat', 'services/ml/chat_routes.py', 'Older Gemini chat that injects a model summary. The backend now uses its own Copilot route instead; kept for direct use.'],
+
+  ['ml_store', 'mlcore', 'ml_service.py store', 'services/ml/ml_service.py', 'PIPELINES and HISTORY dictionaries; load_model() reads <id>_pipe.pkl and <id>_history.json from saved_models, save_model() writes them back.', 'FAULT_STATES = [2] here but the pipeline default is [3, 8]; with few code-2 rows training falls back to proxy labels.'],
+  ['p_feat', 'mlcore', 'engineer_features', 'services/ml/inverter_pip_line.py', '28 power, thermal, electrical and alarm features (see ML pipeline tab).'],
+  ['p_label', 'mlcore', 'labels (op_state / IF proxy)', 'services/ml/inverter_pip_line.py', 'Real labels from op_state when fault codes are present, otherwise Isolation Forest anomalies become the labels.', 'All 22 saved models used proxy labels, so the classifiers learn to imitate the Isolation Forest.'],
+  ['p_models', 'mlcore', 'IF + RF + XGB + LGBM + CatBoost', 'services/ml/inverter_pip_line.py', 'Five models per inverter with class-imbalance weighting. AUC-based ensemble weights.'],
+  ['p_ens', 'mlcore', 'ensemble score → status', 'services/ml/inverter_pip_line.py', 'Weighted probability + 0.10 agreement bonus; FAULT ≥ 0.30, WARNING ≥ 0.15.', 'Scores ≈ 30 % of stored readings as FAULT; precision against real fault codes ≈ 0.002.'],
+  ['p_eta', 'mlcore', 'predict_eta', 'services/ml/inverter_pip_line.py', 'Linear trend over the last 48 scores; ETA only when slope > 0 and R² ≥ 0.10.'],
+  ['p_rca', 'mlcore', 'root_cause_analysis', 'services/ml/inverter_pip_line.py', 'Blended global importance grouped into 5 cause categories.'],
+  ['p_loss', 'mlcore', 'predict_financial_loss', 'services/ml/inverter_pip_line.py', '15-day projection of score → degradation → lost kWh → ₹.', 'Unbounded: one bad daily_kwh value produced ₹508 million for INV-267.'],
+  ['fc_power', 'mlcore', 'XGB + exp + linear power', 'services/ml/forecast.py', 'Recursive XGBoost blended with persistence and a linear trend, weights from one-step MAE.', 'Backtest: the blend is 4–25× worse than a "same as yesterday" baseline because the 10-minute linear trend is extrapolated for 24 hours.'],
+  ['fc_risk', 'mlcore', 'compute_risk_forecast', 'services/ml/forecast.py', 'Mean-reverting walk towards 0.05 with a power-change term and random noise, smoothed.', 'Uses unseeded random noise; not learned from data.'],
+
+  ['Users', 'model', 'Users', 'backend/prisma/schema.prisma', 'name, unique email, bcrypt password, role (default operator).'],
+  ['Inverters', 'model', 'Inverters', 'backend/prisma/schema.prisma', 'id (e.g. INV-04), block, status (Healthy / At Risk), last_updated. Parent of every other inverter table.'],
+  ['Telemetry', 'model', 'Telemetry', 'backend/prisma/schema.prisma', 'One row per /predict reading: power, temps, voltages, currents, frequency, alarm, op_state, price.'],
+  ['Predictions', 'model', 'Predictions', 'backend/prisma/schema.prisma', 'risk_score (0–100), risk_level, explanation, current_status/score, ETA, primary cause, loss, and JSON per_model_probs / daily_table / model_output.'],
+  ['Alerts', 'model', 'Alerts', 'backend/prisma/schema.prisma', 'severity, message (an [ACK] prefix marks acknowledged), status, timestamps.'],
+  ['Maintenance', 'model', 'Maintenance', 'backend/prisma/schema.prisma', 'issue, details, status, scheduled / resolved dates, resolution notes.'],
+  ['Reports', 'model', 'Reports', 'backend/prisma/schema.prisma', 'title, type, date, size, generated_by.'],
+  ['ForecastUpload', 'model', 'ForecastUpload', 'backend/prisma/schema.prisma', 'The raw CSV text, row count and uploader for every forecast upload.'],
+  ['ForecastPoint', 'model', 'ForecastPoint', 'backend/prisma/schema.prisma', '1,440 rows per inverter: minute offset, timestamp, predicted power, risk. The durable copy of the ML forecast.'],
+  ['ChatSession', 'model', 'ChatSession / ChatMessage', 'backend/prisma/schema.prisma', 'Chat history tables from a removed feature. Still in the schema, unused by code.'],
+
+  ['prisma', 'infra', 'Prisma client + pg adapter', 'backend/src/config/database.js', 'Prisma 5.22 with the driverAdapters preview and a node-postgres Pool on DATABASE_URL.'],
+  ['neon', 'infra', 'Neon PostgreSQL', 'DATABASE_URL', 'Hosted Postgres through the Neon pooler. The schema was introspected; there are no migration files.'],
+  ['disk', 'infra', 'saved_models/', 'services/ml/saved_models/', '22 *_pipe.pkl + *_history.json pairs, committed to git. Six pickles are byte-identical copies.'],
+  ['fstore', 'infra', 'FORECAST_STORE (memory)', 'services/ml/forecast.py', 'Forecasts per inverter in the Flask process. Lost on restart.'],
+  ['gemini', 'infra', 'Google Gemini API', 'generativelanguage.googleapis.com', 'gemini-2.5-flash via REST (backend) and the google-genai SDK (ML /chat). Needs GEMINI_API_KEY.'],
+];
+
+const EDGES = [
+  ['pg_landing', 'pg_auth'], ['pg_auth', 'ctx_auth'], ['pg_auth', 'api'], ['ctx_auth', 'api'],
+  ['pg_dash', 'w_grid'], ['pg_dash', 'w_upload'], ['pg_dash', 'api'], ['w_grid', 'api'], ['w_upload', 'api'],
+  ['pg_inv', 'pg_detail'], ['pg_inv', 'api'], ['pg_detail', 'api'], ['pg_copilot', 'api'],
+  ['pg_alerts', 'api'], ['pg_maint', 'api'], ['pg_energy', 'api'], ['pg_analytics', 'api'], ['pg_reports', 'api'],
+  ['api', 'r_register'], ['api', 'r_login'], ['api', 'r_inv'], ['api', 'r_inv_id'], ['api', 'r_predict'],
+  ['api', 'r_alerts'], ['api', 'r_maint'], ['api', 'r_reports'], ['api', 'r_energy'], ['api', 'r_analytics'],
+  ['api', 'r_copilot'], ['api', 'r_fup'], ['api', 'r_fnext'], ['api', 'r_fall'],
+  ['r_register', 'c_auth'], ['r_login', 'c_auth'], ['r_health', 'prisma'],
+  ['r_inv', 'm_auth'], ['r_inv', 'c_inv'], ['r_inv_id', 'm_auth'], ['r_inv_id', 'c_inv'],
+  ['r_predict', 'm_auth'], ['r_predict', 'm_valid'], ['r_predict', 'c_predict'],
+  ['r_alerts', 'm_auth'], ['r_alerts', 'h_misc'], ['r_maint', 'm_auth'], ['r_maint', 'h_misc'], ['r_reports', 'm_auth'], ['r_reports', 'h_misc'],
+  ['r_energy', 'm_auth'], ['r_energy', 'h_misc'], ['r_analytics', 'm_auth'], ['r_analytics', 'h_misc'],
+  ['r_copilot', 'm_auth'], ['r_copilot', 'h_copilot'],
+  ['r_fup', 'm_auth'], ['r_fup', 'h_forecast'], ['r_fnext', 'm_auth'], ['r_fnext', 'h_forecast'], ['r_fall', 'm_auth'], ['r_fall', 'h_forecast'],
+  ['m_valid', 'm_err'],
+  ['c_auth', 'Users'], ['c_inv', 'Inverters'], ['c_inv', 'Predictions'], ['c_inv', 'Telemetry'],
+  ['c_predict', 's_ml'], ['c_predict', 'Inverters'], ['c_predict', 'Telemetry'], ['c_predict', 'Predictions'], ['c_predict', 'Alerts'],
+  ['h_forecast', 'e_fup'], ['h_forecast', 'e_fread'], ['h_forecast', 's_fcache'], ['h_forecast', 'ForecastUpload'], ['h_forecast', 'Inverters'], ['h_forecast', 'Predictions'],
+  ['h_copilot', 's_llm'], ['h_copilot', 's_plan'],
+  ['h_misc', 'Alerts'], ['h_misc', 'Maintenance'], ['h_misc', 'Reports'], ['h_misc', 'Inverters'], ['h_misc', 'Telemetry'],
+  ['s_ml', 'e_single'], ['s_llm', 'gemini'], ['s_plan', 'Inverters'], ['s_plan', 'Telemetry'], ['s_plan', 'Alerts'], ['s_plan', 'Maintenance'],
+  ['s_fcache', 'e_fread'], ['s_fcache', 'ForecastPoint'],
+  ['f_app', 'e_single'], ['f_app', 'e_train'], ['f_app', 'e_predict'], ['f_app', 'e_fup'], ['f_app', 'e_fread'], ['f_app', 'e_chat'],
+  ['e_single', 'ml_store'], ['e_single', 'p_feat'], ['e_train', 'p_feat'], ['e_train', 'p_label'], ['e_train', 'p_models'], ['e_train', 'ml_store'],
+  ['e_predict', 'ml_store'], ['e_chat', 'ml_store'], ['e_chat', 'gemini'],
+  ['e_fup', 'fc_power'], ['e_fup', 'fc_risk'], ['e_fup', 'fstore'], ['e_fread', 'fstore'],
+  ['ml_store', 'disk'], ['p_feat', 'p_ens'], ['p_label', 'p_models'], ['p_models', 'p_ens'],
+  ['p_ens', 'p_eta'], ['p_ens', 'p_rca'], ['p_ens', 'p_loss'],
+  ['Users', 'prisma'], ['Inverters', 'prisma'], ['Telemetry', 'prisma'], ['Predictions', 'prisma'], ['Alerts', 'prisma'],
+  ['Maintenance', 'prisma'], ['Reports', 'prisma'], ['ForecastUpload', 'prisma'], ['ForecastPoint', 'prisma'], ['ChatSession', 'prisma'],
+  ['prisma', 'neon'],
+];
+
+const FLOWS = [
+  {
+    id: 'signin', title: 'Sign in',
+    summary: 'Email and password become a JWT that every later request carries.',
+    steps: [
+      ['pg_auth', 'Login form submits email and password.'],
+      ['api', 'POST without a token; auth errors are shown on the form instead of redirecting.'],
+      ['r_login', 'POST /api/auth/login (public).'],
+      ['c_auth', 'Finds the user by email and compares the bcrypt hash.'],
+      ['Users', 'Reads the user row.'],
+      ['prisma', 'Query through the pg adapter.'],
+      ['neon', 'Postgres answers.'],
+      ['ctx_auth', 'Stores the 1-day JWT and user in localStorage; ProtectedRoute now lets /dashboard through.'],
+    ],
+  },
+  {
+    id: 'add', title: 'Add inverter → fault prediction',
+    summary: 'One hourly reading creates the inverter, runs the 5-model fault ensemble and may raise an alert.',
+    steps: [
+      ['pg_inv', 'Add Inverter form with all 15 reading fields.'],
+      ['api', 'POST /predict with numbers coerced on the client.'],
+      ['r_predict', 'POST /predict.'],
+      ['m_auth', 'JWT verified.'],
+      ['m_valid', 'Zod checks every field is present and within bounds; otherwise 400 naming the field.'],
+      ['c_predict', 'predictProbability handler.'],
+      ['s_ml', 'POSTs the reading to the ML service.'],
+      ['e_single', 'POST /predict/single: 404 if the inverter has no saved model (→ "Untrained").'],
+      ['ml_store', 'Loads the pickle + history, appends the reading, writes both back to disk.'],
+      ['p_feat', 'Engineers 28 features over the whole history.'],
+      ['p_ens', 'Ensemble score and NORMAL / WARNING / FAULT for the latest row.'],
+      ['p_eta', 'Time-to-fault from the 48-hour trend.'],
+      ['p_rca', 'Primary cause from model importances.'],
+      ['p_loss', '15-day ₹ loss projection.'],
+      ['s_ml', 'Score × 100 → risk_score; Critical if FAULT or ≥ 80, High if ≥ 50; builds the explanation.'],
+      ['Inverters', 'Upsert: At Risk for High/Critical, else Healthy.'],
+      ['Telemetry', 'Reading stored.'],
+      ['Predictions', 'Prediction stored with the full model output JSON.'],
+      ['Alerts', 'Created for High / Critical.'],
+      ['pg_inv', 'Map refreshes with the new inverter.'],
+    ],
+  },
+  {
+    id: 'upload', title: 'Upload forecast CSV',
+    summary: 'A minute-level CSV trains one power forecast per inverter and stores 1,440 future minutes in Postgres.',
+    steps: [
+      ['w_upload', 'Checks the 14 required columns and ≥ 15 rows, then sends the file as text.'],
+      ['api', 'POST with upload progress.'],
+      ['r_fup', 'POST /api/forecast/upload.'],
+      ['m_auth', 'JWT verified.'],
+      ['h_forecast', 'Upserts every inverter id found in the CSV.'],
+      ['ForecastUpload', 'Raw CSV saved with row count and uploader.'],
+      ['e_fup', 'ML service parses and splits the CSV by inverter.'],
+      ['fc_power', 'Trains XGBoost, computes blend weights, forecasts 1,440 minutes.'],
+      ['fc_risk', 'Builds the risk series.'],
+      ['fstore', 'Kept in memory in the Flask process.'],
+      ['s_fcache', 'Backend fetches /forecast/all per inverter and replaces its ForecastPoint rows.'],
+      ['ForecastPoint', '1,440 rows per inverter.'],
+      ['Predictions', 'A prediction row with risk = first-minute risk × 100 moves the inverter out of "Untrained".'],
+      ['pg_dash', 'Upload success refreshes the grid and summary.'],
+    ],
+  },
+  {
+    id: 'grid', title: 'Prediction grid (live)',
+    summary: 'The grid loads each forecast once, then reads t+1..t+3 from it as the clock ticks.',
+    steps: [
+      ['w_grid', 'For each inverter not marked Untrained, requests its forecast once.'],
+      ['api', 'GET /api/forecast/all?inverter_id=…'],
+      ['r_fall', 'GET /api/forecast/all.'],
+      ['m_auth', 'JWT verified.'],
+      ['h_forecast', 'Tries the ML service first.'],
+      ['e_fread', 'In-memory forecast, if the ML service has not restarted since the upload.'],
+      ['s_fcache', 'Otherwise rebuilt from the database.'],
+      ['ForecastPoint', 'Cached 1,440 points.'],
+      ['w_grid', 'Every minute, maps the wall-clock time onto the forecast via its first timestamp and shows power and risk for the next three minutes. 404 → "Unpredicted".'],
+    ],
+  },
+  {
+    id: 'copilot', title: 'Ask Copilot',
+    summary: 'Gemini plans which tables to read, the backend runs read-only queries, then Gemini answers from the rows.',
+    steps: [
+      ['pg_copilot', 'Operator types a question.'],
+      ['api', 'POST { question }.'],
+      ['r_copilot', 'POST /api/copilot/chat.'],
+      ['m_auth', 'JWT verified.'],
+      ['h_copilot', 'Pass 1: ask for a retrieval plan.'],
+      ['s_llm', 'Gemini returns JSON: which model, findMany/findFirst, where/take/orderBy.'],
+      ['gemini', 'gemini-2.5-flash.'],
+      ['s_plan', 'Pass 2: only whitelisted tables and read actions are executed.'],
+      ['Alerts', 'e.g. active alerts in the last 7 days.'],
+      ['s_llm', 'Pass 3: answer from the retrieved rows; lists come back in <ui_table> blocks.'],
+      ['pg_copilot', 'Renders text and tables. On any Gemini error a canned fallback is shown.'],
+    ],
+  },
+  {
+    id: 'detail', title: 'Inverter detail',
+    summary: 'One page stitches the latest prediction, telemetry, alerts and maintenance together.',
+    steps: [
+      ['pg_detail', 'Opens /inverter/:id from the map or table.'],
+      ['api', 'GET inverter, then GET all alerts and all maintenance and filters by id on the client.'],
+      ['r_inv_id', 'GET /api/inverters/:id.'],
+      ['c_inv', 'Latest telemetry and prediction.'],
+      ['Predictions', 'model_output JSON supplies top features for the importance chart.'],
+      ['r_alerts', 'GET /api/alerts.'],
+      ['r_maint', 'GET /api/maintenance.'],
+      ['pg_detail', 'Risk ring, ETA, cause, loss, feature chart and ticket history.'],
+    ],
+  },
+  {
+    id: 'alerts', title: 'Acknowledge an alert',
+    summary: 'Alerts are created by High/Critical predictions and managed from the Alerts page.',
+    steps: [
+      ['pg_alerts', 'Acknowledge or Dismiss.'],
+      ['api', 'PATCH /api/alerts/:id/status.'],
+      ['r_alerts', 'Status must be Active, Acknowledged or Dismissed.'],
+      ['m_auth', 'JWT verified.'],
+      ['h_misc', 'Acknowledged adds an [ACK] prefix to the message; Dismissed deletes the row.'],
+      ['Alerts', 'Row updated or deleted.'],
+    ],
+  },
+];
+
+// ═══════════════════════════ FLOW MAP ═══════════════════════════
+const NODE_W = 196;
+const NODE_H = 32;
+const COL_GAP = 52;
+const ROW_H = 44;
+const TOP = 44;
+const LEFT = 20;
+
+const colIndex = Object.fromEntries(COLUMNS.map((column, index) => [column.key, index]));
+const nodes = new Map();
+const rowCounts = {};
+
+for (const [id, col, label, file, desc, issue] of NODE_ROWS) {
+  const row = rowCounts[col] || 0;
+  rowCounts[col] = row + 1;
+  nodes.set(id, {
+    id, col, label, file, desc, issue,
+    x: LEFT + colIndex[col] * (NODE_W + COL_GAP),
+    y: TOP + row * ROW_H,
+    out: [], in: [],
+  });
+}
+for (const [from, to] of EDGES) {
+  nodes.get(from).out.push(to);
+  nodes.get(to).in.push(from);
+}
+const flowsByNode = new Map();
+for (const flow of FLOWS) {
+  for (const [id] of flow.steps) {
+    if (!flowsByNode.has(id)) flowsByNode.set(id, new Set());
+    flowsByNode.get(id).add(flow.id);
+  }
+}
+
+const canvas = document.getElementById('canvas');
+const svg = document.getElementById('edges');
+const panel = document.getElementById('panel');
+const wrap = document.getElementById('wrap');
+const searchInput = document.getElementById('search');
+
+const width = LEFT * 2 + COLUMNS.length * NODE_W + (COLUMNS.length - 1) * COL_GAP;
+const height = TOP + Math.max(...Object.values(rowCounts)) * ROW_H + 24;
+canvas.style.width = `${width}px`;
+canvas.style.height = `${height}px`;
+svg.setAttribute('width', width);
+svg.setAttribute('height', height);
+svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+const issueCount = [...nodes.values()].filter((n) => n.issue).length;
+document.getElementById('stats').textContent =
+  `${nodes.size} nodes · ${EDGES.length} connections · ${FLOWS.length} flows · ${issueCount} flagged`;
+
+COLUMNS.forEach((column, index) => {
+  const head = document.createElement('div');
+  head.className = 'col-head';
+  head.style.left = `${LEFT + index * (NODE_W + COL_GAP)}px`;
+  head.style.width = `${NODE_W}px`;
+  head.textContent = column.title;
+  canvas.appendChild(head);
+});
+
+const legend = document.getElementById('legend');
+for (const column of COLUMNS) {
+  const item = document.createElement('span');
+  item.innerHTML = `<i class="dot" style="--dot: var(${column.color})"></i>`;
+  item.append(column.title);
+  legend.appendChild(item);
+}
+
+const nodeEls = new Map();
+for (const node of nodes.values()) {
+  const column = COLUMNS[colIndex[node.col]];
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = `node${column.mono ? ' mono' : ''}${node.issue ? ' flagged' : ''}`;
+  el.style.left = `${node.x}px`;
+  el.style.top = `${node.y}px`;
+  el.style.width = `${NODE_W}px`;
+  el.style.height = `${NODE_H}px`;
+  el.title = `${node.label} — ${node.file}${node.issue ? ' (known issue)' : ''}`;
+  el.dataset.id = node.id;
+  el.innerHTML = `<i class="dot" style="--dot: var(${column.color})"></i><span class="label"></span>`;
+  el.querySelector('.label').textContent = node.label;
+  el.addEventListener('click', () => selectNode(node.id, { scroll: false }));
+  canvas.appendChild(el);
+  nodeEls.set(node.id, el);
+}
+
+// Forward edges run left to right; same-column edges loop out on the right;
+// backward edges (results flowing back to the client) are dashed and only drawn when selected.
+const edgePath = (fromId, toId) => {
+  const a = nodes.get(fromId);
+  const b = nodes.get(toId);
+  const ay = a.y + NODE_H / 2;
+  const by = b.y + NODE_H / 2;
+  if (colIndex[a.col] === colIndex[b.col]) {
+    const x = a.x + NODE_W;
+    const bulge = 26 + Math.min(40, Math.abs(by - ay) / 6);
+    return { d: `M ${x} ${ay} C ${x + bulge} ${ay}, ${x + bulge} ${by}, ${x} ${by}`, back: false };
+  }
+  if (colIndex[b.col] > colIndex[a.col]) {
+    const x1 = a.x + NODE_W;
+    const x2 = b.x;
+    const dx = Math.max(28, (x2 - x1) / 2);
+    return { d: `M ${x1} ${ay} C ${x1 + dx} ${ay}, ${x2 - dx} ${by}, ${x2} ${by}`, back: false };
+  }
+  const x1 = a.x;
+  const x2 = b.x + NODE_W;
+  const dx = Math.max(40, (x1 - x2) / 3);
+  return { d: `M ${x1} ${ay} C ${x1 - dx} ${ay - 40}, ${x2 + dx} ${by - 40}, ${x2} ${by}`, back: true };
+};
+
+const edgeEls = new Map();
+const addEdgeEl = (fromId, toId, extraClass = '') => {
+  const key = `${fromId}>${toId}`;
+  if (edgeEls.has(key)) return edgeEls.get(key);
+  const { d, back } = edgePath(fromId, toId);
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', d);
+  path.setAttribute('class', `edge${back ? ' back hidden-back' : ''} ${extraClass}`.trim());
+  svg.appendChild(path);
+  edgeEls.set(key, path);
+  return path;
+};
+for (const [from, to] of EDGES) addEdgeEl(from, to);
+for (const flow of FLOWS) {
+  for (let i = 0; i < flow.steps.length - 1; i += 1) {
+    const from = flow.steps[i][0];
+    const to = flow.steps[i + 1][0];
+    if (from !== to && !edgeEls.has(`${from}>${to}`)) {
+      addEdgeEl(from, to, 'flow-only').style.display = 'none';
+    }
+  }
+}
+
+const flowsBar = document.getElementById('flows');
+const chipEls = new Map();
+for (const flow of FLOWS) {
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'chip';
+  chip.textContent = flow.title;
+  chip.setAttribute('aria-pressed', 'false');
+  chip.addEventListener('click', () => (state.flow === flow.id ? clearSelection() : selectFlow(flow.id)));
+  flowsBar.appendChild(chip);
+  chipEls.set(flow.id, chip);
+}
+
+const state = { node: null, flow: null, query: '' };
+
+const resetVisuals = () => {
+  for (const el of nodeEls.values()) {
+    el.classList.remove('dim', 'hit', 'selected', 'pulse');
+    el.querySelector('.step')?.remove();
+  }
+  for (const path of edgeEls.values()) {
+    path.classList.remove('dim', 'hit');
+    if (path.classList.contains('flow-only')) path.style.display = 'none';
+  }
+  for (const chip of chipEls.values()) chip.setAttribute('aria-pressed', 'false');
+};
+
+const applyHighlight = (nodeIds, edgeKeys) => {
+  for (const [id, el] of nodeEls) {
+    el.classList.toggle('dim', !nodeIds.has(id));
+    el.classList.toggle('hit', nodeIds.has(id));
+  }
+  for (const [key, path] of edgeEls) {
+    const on = edgeKeys.has(key);
+    path.classList.toggle('hit', on);
+    path.classList.toggle('dim', !on);
+    if (path.classList.contains('flow-only')) path.style.display = on ? '' : 'none';
+  }
+};
+
+const scrollToNode = (id) => {
+  const node = nodes.get(id);
+  wrap.scrollTo({
+    left: Math.max(0, node.x - wrap.clientWidth / 2 + NODE_W / 2),
+    top: Math.max(0, node.y - wrap.clientHeight / 2),
+    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+  });
+  const el = nodeEls.get(id);
+  el.classList.remove('pulse');
+  void el.offsetWidth;
+  el.classList.add('pulse');
+};
+
+const kindOf = (node) => COLUMNS[colIndex[node.col]];
+
+const linkButton = (id) => {
+  const node = nodes.get(id);
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.innerHTML = `<i class="dot" style="--dot: var(${kindOf(node).color})"></i>`;
+  button.append(node.label);
+  button.addEventListener('click', () => selectNode(id, { scroll: true }));
+  return button;
+};
+
+const section = (title, content) => {
+  const wrapEl = document.createElement('div');
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+  wrapEl.append(heading, content);
+  return wrapEl;
+};
+
+const linkList = (ids, emptyText) => {
+  const list = document.createElement('div');
+  list.className = 'link-list';
+  if (!ids.length) {
+    const none = document.createElement('span');
+    none.className = 'muted';
+    none.textContent = emptyText;
+    list.appendChild(none);
+  }
+  ids.forEach((id) => list.appendChild(linkButton(id)));
+  return list;
+};
+
+function selectNode(id, { scroll }) {
+  resetVisuals();
+  state.node = id;
+  state.flow = null;
+  const node = nodes.get(id);
+  const ids = new Set([id, ...node.out, ...node.in]);
+  const keys = new Set([...node.out.map((to) => `${id}>${to}`), ...node.in.map((from) => `${from}>${id}`)]);
+  applyHighlight(ids, keys);
+  nodeEls.get(id).classList.add('selected');
+  if (scroll) scrollToNode(id);
+
+  const column = kindOf(node);
+  panel.replaceChildren();
+  const kind = document.createElement('span');
+  kind.className = 'kind';
+  kind.innerHTML = `<i class="dot" style="--dot: var(${column.color})"></i>`;
+  kind.append(column.kind);
+  const title = document.createElement('h2');
+  title.textContent = node.label;
+  const file = document.createElement('p');
+  file.className = 'file';
+  file.textContent = node.file;
+  const desc = document.createElement('p');
+  desc.textContent = node.desc;
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+  head.append(kind, title, file);
+  panel.append(head, desc);
+  if (node.issue) {
+    const issue = document.createElement('p');
+    issue.className = 'issue';
+    issue.textContent = `Known issue: ${node.issue}`;
+    panel.append(issue);
+  }
+  panel.append(
+    section('Calls / leads to', linkList(node.out, 'Nothing downstream.')),
+    section('Called by', linkList(node.in, 'Nothing upstream.')));
+
+  const flowIds = [...(flowsByNode.get(id) || [])];
+  if (flowIds.length) {
+    const list = document.createElement('div');
+    list.className = 'flows';
+    for (const flowId of flowIds) {
+      const flow = FLOWS.find((f) => f.id === flowId);
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip';
+      chip.textContent = flow.title;
+      chip.addEventListener('click', () => selectFlow(flow.id));
+      list.appendChild(chip);
+    }
+    panel.append(section('Part of these flows', list));
+  }
+}
+
+function selectFlow(flowId) {
+  resetVisuals();
+  state.flow = flowId;
+  state.node = null;
+  const flow = FLOWS.find((f) => f.id === flowId);
+  chipEls.get(flowId).setAttribute('aria-pressed', 'true');
+  const ids = new Set(flow.steps.map(([id]) => id));
+  const keys = new Set();
+  for (let i = 0; i < flow.steps.length - 1; i += 1) {
+    if (flow.steps[i][0] !== flow.steps[i + 1][0]) keys.add(`${flow.steps[i][0]}>${flow.steps[i + 1][0]}`);
+  }
+  applyHighlight(ids, keys);
+  const numbered = new Set();
+  flow.steps.forEach(([id], index) => {
+    if (numbered.has(id)) return;
+    numbered.add(id);
+    const badge = document.createElement('span');
+    badge.className = 'step';
+    badge.textContent = index + 1;
+    nodeEls.get(id).prepend(badge);
+  });
+
+  panel.replaceChildren();
+  const kind = document.createElement('span');
+  kind.className = 'kind';
+  kind.textContent = `Flow · ${flow.steps.length} steps`;
+  const title = document.createElement('h2');
+  title.textContent = flow.title;
+  const summary = document.createElement('p');
+  summary.className = 'muted';
+  summary.textContent = flow.summary;
+  const list = document.createElement('ol');
+  list.className = 'steps';
+  flow.steps.forEach(([id, note], index) => {
+    const node = nodes.get(id);
+    const item = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    const n = document.createElement('span');
+    n.className = 'n';
+    n.textContent = String(index + 1).padStart(2, '0');
+    const body = document.createElement('span');
+    const t = document.createElement('span');
+    t.className = 't';
+    t.textContent = node.label;
+    const d = document.createElement('span');
+    d.className = 'd';
+    d.textContent = note;
+    body.append(t, d);
+    button.append(n, body);
+    button.addEventListener('click', () => scrollToNode(id));
+    item.appendChild(button);
+    list.appendChild(item);
+  });
+  panel.append(kind, title, summary, list);
+  scrollToNode(flow.steps[0][0]);
+}
+
+function renderIntro() {
+  panel.replaceChildren();
+  const title = document.createElement('h2');
+  title.textContent = 'How to read this map';
+  const list = document.createElement('ul');
+  list.className = 'intro-list';
+  for (const text of [
+    'Columns run left to right in call order: the browser on the left, the database and external services on the right. The ML service sits between the backend and storage.',
+    'Click any node to see its file, what it does, what it calls and what calls it. A red corner dot marks a known issue.',
+    'Pick a flow above to trace one request end to end with numbered steps. Dashed lines are results flowing back to the client.',
+    'Search jumps to a node by name, file or description. Enter selects the first match; Esc clears.',
+  ]) {
+    const li = document.createElement('li');
+    li.textContent = text;
+    list.appendChild(li);
+  }
+  const tryIt = document.createElement('div');
+  tryIt.className = 'flows';
+  for (const flowId of ['add', 'upload', 'copilot']) {
+    const flow = FLOWS.find((f) => f.id === flowId);
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.textContent = flow.title;
+    chip.addEventListener('click', () => selectFlow(flowId));
+    tryIt.appendChild(chip);
+  }
+  panel.append(title, list, section('Good places to start', tryIt));
+}
+
+function clearSelection() {
+  state.node = null;
+  state.flow = null;
+  resetVisuals();
+  applySearch();
+  renderIntro();
+}
+
+const matchesQuery = (node, query) =>
+  `${node.label} ${node.file} ${node.desc} ${node.issue || ''}`.toLowerCase().includes(query);
+
+function applySearch() {
+  const query = state.query;
+  if (!query || state.node || state.flow) return;
+  for (const [id, el] of nodeEls) el.classList.toggle('dim', !matchesQuery(nodes.get(id), query));
+  for (const path of edgeEls.values()) path.classList.add('dim');
+}
+
+searchInput.addEventListener('input', () => {
+  state.query = searchInput.value.trim().toLowerCase();
+  if (state.node || state.flow) {
+    state.node = null;
+    state.flow = null;
+    resetVisuals();
+    renderIntro();
+  }
+  if (!state.query) { resetVisuals(); return; }
+  applySearch();
+});
+searchInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    const match = [...nodes.values()].find((node) => node.label.toLowerCase().includes(state.query))
+      || [...nodes.values()].find((node) => matchesQuery(node, state.query));
+    if (match) selectNode(match.id, { scroll: true });
+  }
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    searchInput.value = '';
+    state.query = '';
+    clearSelection();
+  }
+});
+document.getElementById('clear').addEventListener('click', () => {
+  searchInput.value = '';
+  state.query = '';
+  clearSelection();
+});
+renderIntro();
+
+// ═══════════════════════════ TABS ═══════════════════════════
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+function showTab(tab) {
+  for (const t of tabs) {
+    const on = t === tab;
+    t.setAttribute('aria-selected', String(on));
+    t.tabIndex = on ? 0 : -1;
+    document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+  }
+  try { localStorage.setItem('sk-flow-tab', tab.id); } catch (_e) { /* storage unavailable */ }
+}
+tabs.forEach((t, i) => {
+  t.addEventListener('click', () => showTab(t));
+  t.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    showTab(next);
+    next.focus();
+  });
+});
+try {
+  const saved = document.getElementById(localStorage.getItem('sk-flow-tab'));
+  if (saved && tabs.includes(saved)) showTab(saved);
+} catch (_e) { /* storage unavailable */ }
+
+// ═══════════════════════════ CHARTS ═══════════════════════════
+const tip = document.getElementById('tip');
+function showTip(event, title, body) {
+  tip.innerHTML = '';
+  const b = document.createElement('b');
+  b.textContent = title;
+  tip.append(b, body);
+  const r = event.currentTarget.getBoundingClientRect();
+  const x = event.clientX ?? r.left + r.width / 2;
+  const y = event.clientY ?? r.top;
+  tip.classList.add('on');
+  const w = tip.offsetWidth;
+  tip.style.left = `${Math.min(window.innerWidth - w - 8, Math.max(8, x + 12))}px`;
+  tip.style.top = `${Math.max(8, y - tip.offsetHeight - 10)}px`;
+}
+const hideTip = () => tip.classList.remove('on');
+
+// rows: [{ label, value, display, tip }]
+function renderBars(id, rows, { max } = {}) {
+  const host = document.getElementById(id);
+  const top = max ?? Math.max(...rows.map((r) => r.value));
+  for (const r of rows) {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `${r.label}: ${r.display}`);
+    const label = document.createElement('span');
+    label.className = 'bl';
+    label.textContent = r.label;
+    const track = document.createElement('span');
+    track.className = 'bar-track';
+    const fill = document.createElement('span');
+    fill.className = 'bar-fill';
+    fill.style.width = `${Math.max(0, Math.min(100, (r.value / top) * 100))}%`;
+    track.appendChild(fill);
+    const val = document.createElement('span');
+    val.className = 'bv';
+    val.textContent = r.display;
+    row.append(label, track, val);
+    const body = r.tip || r.display;
+    row.addEventListener('mousemove', (e) => showTip(e, r.label, body));
+    row.addEventListener('focus', (e) => showTip(e, r.label, body));
+    row.addEventListener('mouseleave', hideTip);
+    row.addEventListener('blur', hideTip);
+    host.appendChild(row);
+  }
+}
+
+function renderTable(id, head, rows, emRow) {
+  const t = document.getElementById(id);
+  const thead = document.createElement('thead');
+  const tr = document.createElement('tr');
+  for (const h of head) { const th = document.createElement('th'); th.textContent = h; tr.appendChild(th); }
+  thead.appendChild(tr);
+  const tbody = document.createElement('tbody');
+  rows.forEach((r, i) => {
+    const row = document.createElement('tr');
+    if (emRow === i) row.className = 'em';
+    for (const c of r) { const td = document.createElement('td'); td.textContent = c; row.appendChild(td); }
+    tbody.appendChild(row);
+  });
+  t.append(thead, tbody);
+}
+
+const f3 = (v) => (v === null ? '–' : v.toFixed(3));
+const fmt = (v) => v.toLocaleString('en-IN');
+
+// Plant 3 notebook (Plant3.ipynb outputs)
+const P3 = [
+  // name, balAcc, prec, rec, f1, auc, ap, mcc, tn, fp, fn, tp
+  ['Isolation Forest', 0.5229, 0.0603, 0.1480, 0.0857, 0.7911, 0.0904, 0.0302, 26292, 2994, 1105, 192],
+  ['Random Forest', 0.9997, 0.9770, 1.0000, 0.9884, 0.9999, 0.9953, 0.9881, 37126, 25, 0, 1061],
+  ['XGBoost', 0.9991, 0.9680, 0.9991, 0.9833, 0.9999, 0.9957, 0.9829, 37116, 35, 1, 1060],
+  ['LightGBM', 0.9993, 0.9824, 0.9991, 0.9907, 0.9999, 0.9965, 0.9904, 37132, 19, 1, 1060],
+  ['CatBoost', 0.9974, 0.9832, 0.9953, 0.9892, 0.9999, 0.9962, 0.9889, 37133, 18, 5, 1056],
+  ['LSTM autoencoder', 0.4996, 0.0000, 0.0000, 0.0000, 0.7288, 0.0457, -0.0050, 37118, 33, 1061, 0],
+  ['Weighted ensemble', 0.9992, 0.9797, 0.9991, 0.9893, 0.9999, 0.9930, 0.9890, 37129, 22, 1, 1060],
+];
+renderBars('chart-p3-f1', P3.map((m) => ({
+  label: m[0], value: m[4], display: m[4].toFixed(3),
+  tip: `F1 ${m[4].toFixed(3)} · precision ${m[2].toFixed(3)} · recall ${m[3].toFixed(3)}. TP ${fmt(m[11])}, FP ${fmt(m[9])}, FN ${fmt(m[10])}, TN ${fmt(m[8])}.`,
+})), { max: 1 });
+renderTable('table-p3', ['Model', 'Bal. acc', 'Precision', 'Recall', 'F1', 'ROC-AUC', 'Avg prec', 'MCC', 'TP', 'FP', 'FN'],
+  P3.map((m) => [m[0], f3(m[1]), f3(m[2]), f3(m[3]), f3(m[4]), f3(m[5]), f3(m[6]), f3(m[7]), fmt(m[11]), fmt(m[9]), fmt(m[10])]), 6);
+
+// Plant 1 notebook: false-positive rate on a test period with no faults
+const P1 = [
+  ['Isolation Forest', 0.5769, '1,309,792 of 2,270,556 healthy rows flagged'],
+  ['Random Forest', 0.0991, '224,977 of 2,270,556 flagged'],
+  ['XGBoost', 0.0779, '176,953 of 2,270,556 flagged'],
+  ['LightGBM', 0.0827, '187,768 of 2,270,556 flagged'],
+  ['CatBoost', 0.0925, '210,068 of 2,270,556 flagged'],
+  ['LSTM autoencoder', 0.5357, 'Scored on a 2,269-row subset'],
+  ['Weighted ensemble', 0.1205, '6,596 of 54,756 flagged'],
+];
+renderBars('chart-p1-fpr', P1.map(([l, v, t]) => ({ label: l, value: v, display: `${(v * 100).toFixed(1)} %`, tip: t })), { max: 1 });
+
+// Production saved models (measured by scoring each model on its stored history)
+const PROD_FAULT = [
+  ['INV-00', 615, 2000], ['INV-01', 613, 2000], ['INV-011 group ×6', 617, 2000], ['INV-02', 603, 2000],
+  ['INV-03', 3170, 10000], ['INV-04', 588, 2000], ['INV-05', 585, 2000], ['INV-06', 577, 2000],
+  ['INV-07', 593, 2000], ['INV-08', 3105, 10000], ['INV-09', 570, 2000], ['INV-10', 580, 2000],
+  ['INV-11', 3097, 10000], ['INV-99 / NEW-TEST', 614, 2000], ['inv_001', 6, 120], ['inv_008', 5, 121],
+];
+renderBars('chart-prod-fault', PROD_FAULT.map(([l, f, n]) => ({
+  label: l, value: f / n, display: `${((f / n) * 100).toFixed(1)} %`, tip: `${fmt(f)} of ${fmt(n)} stored readings scored FAULT (score ≥ 0.30).`,
+})), { max: 0.4 });
+renderTable('table-prod-real', ['Inverter', 'Real faults', 'ROC-AUC', 'Precision', 'Recall', 'MCC'], [
+  ['INV-01', '2', '0.793', '0.003', '1.000', '0.048'],
+  ['INV-05', '1', '0.868', '0.002', '1.000', '0.035'],
+  ['INV-06', '1', '0.741', '0.002', '1.000', '0.035'],
+  ['INV-09', '1', '0.682', '0.000', '0.000', '−0.014'],
+  ['INV-10', '1', '0.872', '0.002', '1.000', '0.035'],
+]);
+renderTable('table-prod-weights', ['Model', 'AUC range (vs proxy)', 'Weight range'], [
+  ['Random Forest', '0.977 – 1.000', '0.241 – 0.262'],
+  ['XGBoost', '0.992 – 1.000', '0.250 – 0.262'],
+  ['LightGBM', '0.991 – 1.000', '0.249 – 0.253'],
+  ['CatBoost', '0.932 – 1.000', '0.226 – 0.253'],
+]);
+renderBars('chart-rca', [
+  ['Power / Efficiency Loss', 63.1], ['Thermal / Overheating', 20.1], ['Grid / Electrical', 10.2],
+  ['DC / String Loss', 5.2], ['Composite Risk Pattern', 1.5],
+].map(([l, v]) => ({ label: l, value: v, display: `${v.toFixed(1)} %` })), { max: 100 });
+renderBars('chart-feat', [
+  ['lag_1_power', 0.1246], ['power_kw', 0.0940], ['pv1_power_kw', 0.0460], ['ewm_power_short', 0.0424],
+  ['power_roll_std', 0.0167], ['lag_6_power', 0.0081], ['dc_power_calc', 0.0070], ['dc_current_a', 0.0066],
+  ['power_roll_mean', 0.0060], ['freq_deviation', 0.0056],
+].map(([l, v]) => ({ label: l, value: v, display: v.toFixed(3), tip: `Mean blended importance ${v.toFixed(4)} across 14 distinct models (share of total).` })));
+
+// Forecast backtest (re-trained with forecast.py on uploaded CSVs; last day held out)
+const BT = [
+  { name: 'INV-01', rows: 100666, h: 1440, mean: 29.53, m: { one: [0.572, 0.848, 0.999], xgb: [35.137, 42.417, -2.099], ens: [299.562, 339.134, -197.08], pers: [35.193, 42.386, -2.094], seas: [11.863, 18.476, 0.412] } },
+  { name: 'INV-261', rows: 100666, h: 1440, mean: 23.94, m: { one: [0.843, 1.36, 0.994], xgb: [19.683, 24.163, -1.007], ens: [273.109, 310.356, -330.17], pers: [23.049, 28.198, -1.734], seas: [7.31, 11.153, 0.572] } },
+  { name: 'INV-04 / INV-271', rows: 99821, h: 1440, mean: 26.51, m: { one: [0.138, 0.227, 1.0], xgb: [16.28, 18.156, -0.006], ens: [67.713, 79.015, -18.053], pers: [16.29, 18.149, -0.005], seas: [8.835, 11.631, 0.587] } },
+  { name: 'INV-08', rows: 550, h: 110, mean: 25.94, m: { one: [1.763, 2.895, 0.971], xgb: [20.913, 26.175, -1.381], ens: [19.445, 24.83, -1.142], pers: [21.749, 26.95, -1.524], seas: [21.749, 26.95, -1.524] } },
+];
+const METHODS = [
+  ['ens', 'App blend (production)'], ['xgb', 'XGBoost recursive'], ['pers', 'Persistence'], ['seas', 'Seasonal naive'], ['one', 'One-step (ceiling)'],
+];
+const btHost = document.getElementById('bt-charts');
+BT.forEach((d, i) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const h = document.createElement('h2');
+  h.textContent = `${d.name} · MAE over ${d.h === 1440 ? 'the next day' : `${d.h} minutes`}`;
+  const note = document.createElement('p');
+  note.className = 'bar-note';
+  note.textContent = `${fmt(d.rows)} rows · mean power in the held-out window ${d.mean} kW`;
+  const bars = document.createElement('div');
+  bars.className = 'bars';
+  bars.id = `bt-${i}`;
+  card.append(h, note, bars);
+  btHost.appendChild(card);
+  renderBars(bars.id, METHODS.map(([k, l]) => ({
+    label: l, value: d.m[k][0], display: `${d.m[k][0].toFixed(1)} kW`,
+    tip: `MAE ${d.m[k][0].toFixed(2)} kW · RMSE ${d.m[k][1].toFixed(2)} kW · R² ${d.m[k][2].toFixed(2)}`,
+  })));
+});
+const btRows = [];
+for (const d of BT) {
+  for (const [k, l] of METHODS) btRows.push([d.name, l, d.m[k][0].toFixed(2), d.m[k][1].toFixed(2), d.m[k][2].toFixed(3)]);
+}
+renderTable('table-bt', ['Dataset', 'Method', 'MAE (kW)', 'RMSE (kW)', 'R²'], btRows);
+
+// ═══════════════════════════ FINDINGS ═══════════════════════════
+const SEV = {
+  critical: { label: 'Critical', c: 'var(--critical)' },
+  high: { label: 'High', c: 'var(--serious)' },
+  medium: { label: 'Medium', c: 'var(--warning)' },
+};
+const FINDINGS = [
+  ['critical', 'Fault models learned to copy an anomaly detector, not to detect faults',
+    'services/ml/ml_service.py · inverter_pip_line.py make_labels',
+    'All 22 saved models were trained on Isolation Forest proxy labels. Their 0.99+ AUCs measure agreement with that detector. In use they score about 30 % of readings as FAULT; against the few real fault codes, precision is 0.002–0.003. 15 of 22 inverters currently show FAULT.',
+    'Train with real labels as the Plant 3 notebook does (F1 0.989). Set FAULT_STATES per plant (the API uses [2], the pipeline default is [3, 8]) and refuse to save a model that fell back to proxy labels, or label it clearly as "anomaly score".'],
+  ['critical', 'Day-ahead power forecast is worse than "same as yesterday"',
+    'services/ml/forecast.py linear_forecast · compute_dynamic_weights',
+    'Backtested MAE of the production blend: 273–300 kW on 24–30 kW average output (INV-01, INV-261), 68 kW on INV-04. A seasonal-naive baseline gets 7–12 kW. A 10-minute linear slope is extrapolated across 1,440 minutes, and blend weights come from one-step accuracy, which says nothing about a 24-hour horizon. Recursive XGBoost alone collapses to persistence.',
+    'Drop or damp the linear term, choose weights on the real horizon, and add a time-of-day profile (yesterday or a rolling same-minute mean) as a baseline the model must beat. Publish MAE on a held-out day after each upload.'],
+  ['critical', 'The "Risk Score" in the prediction grid is random noise',
+    'services/ml/forecast.py compute_risk_forecast',
+    'Each minute adds uniform(−0.005, 0.015) noise to a walk that drifts towards 0.05, with no seed. Two uploads of the same CSV produce different risk curves, and nothing in the series is learned from data.',
+    'Derive minute risk from the forecast residuals or the fault model, or remove the column and show power only until there is a real model.'],
+  ['high', 'Fault models cannot be trained from the app',
+    'services/ml/ml_routes.py /train · backend (no caller)',
+    'The backend only calls /predict/single and /forecast/*. A new inverter returns 404 from the ML service and is shown as "Untrained", and the UI tells users to upload a CSV on the dashboard, but that upload trains the forecast model, not the fault model.',
+    'Add a backend route (e.g. POST /api/inverters/:id/train) that sends stored telemetry or an uploaded history file to /train, and fix the "Untrained" copy.'],
+  ['high', 'Nine inverters share one model trained on another inverter\'s data',
+    'services/ml/saved_models/',
+    'INV-011, INV-0112, INV-261, INV-267, INV-268 and INV-269 are byte-identical pickles; INV-00, INV-99 and INV-NEW-TEST have the same training AUCs. Their predictions reflect someone else\'s history plus whatever readings were appended later.',
+    'Retrain per inverter once training is reachable, and delete test artefacts such as INV-NEW-TEST from the repo.'],
+  ['high', 'One bad reading can produce absurd outputs',
+    'inverter_pip_line.py predict_financial_loss · ml_routes.py',
+    'INV-267\'s 15-day loss is ₹508,196,082 because of an unrealistic daily_kwh in its history; INV-271 has a 150,000,000,000 kW telemetry row. Backend /predict now rejects out-of-range values, but the ML service itself validates only that fields exist.',
+    'Validate ranges in the ML service too, clip outliers before feature engineering, and cap degradation × expected kWh at physically possible values.'],
+  ['high', 'Evaluation is in-sample and history keeps growing into it',
+    'ml_routes.py predict_single',
+    'Every reading is appended to a history that already contains the training rows, the whole window (up to 2,000 rows) is re-scored and written to disk, and the metrics returned are computed on that mix.',
+    'Keep the training set separate from live history, score only the new window, and report metrics only on data the model never saw.'],
+  ['medium', 'Root cause is the same answer every time',
+    'inverter_pip_line.py root_cause_analysis · InverterDetail.jsx',
+    'Root cause comes from global feature importance, so it never changes per reading: all 22 inverters say "Power / Efficiency Loss" (≈ 63 %). The detail page labels this chart "SHAP".',
+    'Compute per-prediction attributions (e.g. TreeSHAP on the latest row) or rename the chart to "Model feature importance".'],
+  ['medium', 'Energy Impact and Analytics show hard-coded numbers',
+    'backend/src/routes/energy.js · analytics.js',
+    'Energy Impact multiplies at-risk inverters by 50 kWh/day and ₹35 and shows a fixed Jan–Jun chart. Analytics\' "predicted" performance ratio is actual + 2. Neither uses the ML loss forecast that is already stored in Predictions.',
+    'Sum total_loss_inr / total_loss_kwh from the latest prediction per inverter, and drop or replace the synthetic series.'],
+  ['medium', 'Plant 3 results may lean on the alarm code',
+    'Plant3.ipynb · FEATURE_COLS',
+    'Near-perfect scores (F1 0.99, AUC 0.9999) on a temporal split are possible but unusual. alarm_code is an input feature and may move with op_state, the label.',
+    'Re-run without alarm_code and rolling_fault_proxy. If scores hold, the model is predicting faults; if they drop sharply, it was reading the alarm.'],
+  ['medium', 'Smaller gaps',
+    'AppLayout.jsx · copilot.js · InverterDetail / api.js · schema.prisma',
+    'Analytics is routed but missing from the sidebar. Copilot\'s schema prompt omits Predictions, so it cannot answer risk questions. The detail page\'s D+1…D+3 trend repeats today\'s score. ChatSession / ChatMessage tables are unused. forecast.py runs exp_smoothing that ignores alpha.',
+    'Add the nav link, add Predictions to the Copilot whitelist, feed the trend from the 15-day projected scores, and remove unused tables and parameters.'],
+];
+const fHost = document.getElementById('findings');
+const fFilter = document.getElementById('finding-filter');
+const fCards = [];
+for (const [sev, title, where, what, fix] of FINDINGS) {
+  const s = SEV[sev];
+  const card = document.createElement('article');
+  card.className = 'card finding';
+  card.style.setProperty('--c', s.c);
+  card.dataset.sev = sev;
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const badge = document.createElement('span');
+  badge.className = 'badge';
+  badge.style.setProperty('--c', s.c);
+  badge.innerHTML = '<i aria-hidden="true"></i>';
+  badge.append(s.label);
+  meta.append(badge);
+  const h = document.createElement('h2');
+  h.textContent = title;
+  const w = document.createElement('p');
+  w.className = 'where';
+  w.textContent = where;
+  const p = document.createElement('p');
+  p.textContent = what;
+  const f = document.createElement('p');
+  f.className = 'fix';
+  f.innerHTML = '<b>Fix: </b>';
+  f.append(fix);
+  card.append(meta, h, w, p, f);
+  fHost.appendChild(card);
+  fCards.push(card);
+}
+const counts = FINDINGS.reduce((acc, [s]) => ({ ...acc, [s]: (acc[s] || 0) + 1 }), {});
+const filterChips = [];
+for (const [key, label] of [['all', `All (${FINDINGS.length})`], ['critical', `Critical (${counts.critical})`], ['high', `High (${counts.high})`], ['medium', `Medium (${counts.medium})`]]) {
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'chip';
+  chip.textContent = label;
+  chip.setAttribute('aria-pressed', String(key === 'all'));
+  chip.addEventListener('click', () => {
+    filterChips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+    fCards.forEach((c) => { c.hidden = key !== 'all' && c.dataset.sev !== key; });
+  });
+  fFilter.appendChild(chip);
+  filterChips.push(chip);
+}
+</script>
+</body>
+</html>
