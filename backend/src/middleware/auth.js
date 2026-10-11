@@ -12,18 +12,7 @@ function requireAuth(req, res, next) {
     try {
         req.user = jwt.verify(token, getJwtSecret());
         return next();
-    } catch (error) {
-        // Fallback for old tokens minted with slightly different secret formatting
-        try {
-            const decoded = jwt.decode(token);
-            if (decoded && decoded.exp && decoded.exp * 1000 > Date.now()) {
-                req.user = decoded;
-                return next();
-            }
-        } catch (_ignore) {
-            // no-op
-        }
-
+    } catch (_error) {
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 }

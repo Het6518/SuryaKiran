@@ -68,13 +68,13 @@ export function InverterPredictionGrid({ inverters = [], onUploadClick, refreshT
 
     useEffect(() => {
         inverters.forEach((inv) => {
-            // Only fetch if we don't have data OR if we're explicitly told to refresh (handled by clearing state above)
-            if (!forecastData[inv.id] && inv.status !== 'Untrained') {
+            // Fetch once per inverter (refreshTrigger clears the cache above). Failures are
+            // cached too, so the 5s dashboard poll doesn't re-request missing forecasts.
+            if (!(inv.id in forecastData) && inv.status !== 'Untrained') {
+                setForecastData((prev) => ({ ...prev, [inv.id]: null }));
                 api.getForecastAll(inv.id)
                     .then((res) => {
-                        if (!res.error) {
-                            setForecastData((prev) => ({ ...prev, [inv.id]: res }));
-                        }
+                        setForecastData((prev) => ({ ...prev, [inv.id]: res.error ? null : res }));
                     })
                     .catch((e) => console.error('Forecast fetch error for', inv.id, e));
             }
@@ -145,7 +145,11 @@ export function InverterPredictionGrid({ inverters = [], onUploadClick, refreshT
                                 const fData = forecastData[inv.id];
 
                                 const getPredictionForOffset = (offsetMinutes) => {
-                                    const index = (currentMinuteOfDay + offsetMinutes) % 1440;
+                                    // Forecast starts the minute after the uploaded data ends; map wall-clock
+                                    // time-of-day onto that series using its first timestamp.
+                                    const first = fData?.timestamps?.[0] ? new Date(fData.timestamps[0]) : null;
+                                    const startMinute = first && !isNaN(first) ? first.getHours() * 60 + first.getMinutes() : 0;
+                                    const index = (currentMinuteOfDay + offsetMinutes - startMinute + 1440) % 1440;
 
                                     if (fData && fData.power && fData.risk && fData.power.length > index) {
                                         const rawRisk = Number(fData.risk[index] || 0);

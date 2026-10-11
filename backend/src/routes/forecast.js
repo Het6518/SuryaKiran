@@ -133,9 +133,10 @@ router.post('/upload', async (req, res) => {
             const forecast = await saveForecastPoints(upload.id, inverterId, 'csv-trained');
             persisted[inverterId] = forecast;
 
-            // NEW: Update Inverters table status and create a Prediction entry
-            // This ensures the dashboard moves from "Untrained" to "Healthy/At Risk"
-            const latestRisk = forecast.risk[0] || 0;
+            // Update Inverters status and record a Prediction so the dashboard
+            // moves from "Untrained" to "Healthy/At Risk".
+            // The ML service returns risk in 0–1; predictions are stored on a 0–100 scale.
+            const latestRisk = Math.round(Number(forecast.risk[0] || 0) * 100);
             const latestPower = forecast.power[0] || 0;
             const riskLevel = latestRisk >= 80 ? 'Critical' : latestRisk >= 50 ? 'High' : 'Healthy';
 
@@ -154,8 +155,8 @@ router.post('/upload', async (req, res) => {
                         risk_level: riskLevel,
                         explanation: `Forecast updated via CSV upload. Initial predicted power: ${latestPower.toFixed(2)} kW.`,
                         current_status: 'Analysis Ready',
-                        current_score: latestRisk,
-                        model_output: JSON.stringify({ source: 'csv-upload', timestamp: new Date() })
+                        current_score: latestRisk / 100,
+                        model_output: { source: 'csv-upload', timestamp: new Date().toISOString() }
                     }
                 })
             ]);
@@ -249,7 +250,7 @@ router.get('/all', async (req, res) => {
     } catch (_error) {
         const cached = await getDbForecastAll(inverterId);
         if (!cached) {
-            return res.status(333).json({ error: "no data in database and ML service" });
+            return res.status(404).json({ error: `No forecast found for ${inverterId}` });
         }
         return res.json(cached);
     }

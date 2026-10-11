@@ -2,10 +2,12 @@ import React, { useState, useCallback } from 'react';
 import { X, AlertCircle, FileUp, CheckCircle2, FileText, Loader2 } from 'lucide-react';
 import { api } from '@/services/api';
 
+// Must match FEATURE_COLS + id/timestamp in services/ml/forecast.py.
+// target_power is optional (the ML service falls back to power_t-1).
 const EXPECTED_COLUMNS = [
     "timestamp", "inverter_id", "hour", "minute", "sin_time", "cos_time",
     "power_t-10", "power_t-5", "power_t-3", "power_t-1",
-    "rolling_mean_5", "rolling_std_5", "pv_voltage", "pv_current", "target_power"
+    "rolling_mean_5", "rolling_std_5", "pv_voltage", "pv_current"
 ];
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -21,15 +23,13 @@ export function CSVUploadModal({ isOpen, onClose, onUploadSuccess }) {
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
         if (lines.length < 2) return "CSV file is empty or missing data.";
 
-        const headers = lines[0].split(",").map(h => h.trim());
-        if (headers.length !== EXPECTED_COLUMNS.length) {
-            return `Invalid format. Expected ${EXPECTED_COLUMNS.length} columns, found ${headers.length}.`;
+        const headers = new Set(lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, "")));
+        const missing = EXPECTED_COLUMNS.filter(col => !headers.has(col));
+        if (missing.length) {
+            return `Missing column(s): ${missing.join(", ")}`;
         }
-
-        for (let i = 0; i < EXPECTED_COLUMNS.length; i++) {
-            if (headers[i] !== EXPECTED_COLUMNS[i]) {
-                return `Invalid format. Column ${i + 1} should be "${EXPECTED_COLUMNS[i]}".`;
-            }
+        if (lines.length - 1 < 15) {
+            return "Need at least 15 data rows per inverter to build a forecast.";
         }
         return null;
     };

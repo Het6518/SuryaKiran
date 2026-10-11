@@ -63,7 +63,7 @@ Guidelines:
                 inverter_summary = f"""
 Specific Inverter Detail:
   inverter_id: {inverter_id}
-  ensemble_fault_prob: {p1.get('ensemble_score', 0):.3f}
+  ensemble_fault_prob: {p1.get('current_score', 0):.3f}
   risk_level: {p1.get('current_status', 'UNKNOWN')}
   days_to_fault: {p2.get('eta_hours', 0) / 24 if p2.get('eta_hours') else 'Unknown'}
   main_cause: {p3.get('primary_cause', 'Unknown')}

@@ -5,7 +5,6 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 export const http = axios.create({
     baseURL: API_BASE,
     timeout: 300000,  // 5 minutes — ML training on large CSVs takes time
-    validateStatus: (status) => (status >= 200 && status < 300) || status === 333,
 });
 
 http.interceptors.request.use((config) => {
@@ -31,7 +30,8 @@ http.interceptors.response.use(
 );
 
 const severityFromRisk = (score, explicitLabel = null) => {
-    if (explicitLabel === 'Untrained') return 'Untrained';
+    // No prediction yet, or the ML service had no model for this inverter
+    if (!explicitLabel || explicitLabel === 'Untrained') return 'Untrained';
     if (score >= 80) return "High Risk";
     if (score >= 50) return "Medium Risk";
     return "Healthy";
@@ -272,9 +272,17 @@ export const api = {
     },
 
     async getForecastAll(inverterId) {
-        const { data } = await http.get("/api/forecast/all", {
-            params: { inverter_id: inverterId }
-        });
+        let data;
+        try {
+            ({ data } = await http.get("/api/forecast/all", {
+                params: { inverter_id: inverterId }
+            }));
+        } catch (err) {
+            if (err.response?.status === 404) {
+                return { inverter_id: inverterId, error: err.response.data?.error || "No forecast available" };
+            }
+            throw err;
+        }
 
         if (Array.isArray(data.forecast)) {
             return {

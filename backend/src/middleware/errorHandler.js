@@ -5,7 +5,7 @@ const errorHandler = (err, req, res, next) => {
         const firstIssue = err.issues[0];
         return res.status(400).json({
             error: 'Validation failed',
-            details: firstIssue.message
+            details: firstIssue.path?.length ? `${firstIssue.path.join('.')}: ${firstIssue.message}` : firstIssue.message
         });
     }
 

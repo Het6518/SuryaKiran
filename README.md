@@ -342,37 +342,37 @@ This multi-model cross-check ensures **reliable and explainable diagnoses**.
 ## 📂 Project Structure
 
 ```
-suryakiran/
+SuryaKiran/
+├── backend/                  # Node.js + Express API (port 5000)
+│   ├── prisma/schema.prisma  # Database schema (PostgreSQL)
+│   └── src/
+│       ├── config/           # Prisma client
+│       ├── controllers/      # Request handlers
+│       ├── middleware/       # JWT auth, validation, error handling
+│       ├── routes/           # API routes (auth, inverters, forecast, copilot, ...)
+│       ├── services/         # ML service client
+│       └── server.js         # Entry point
 │
-├── backend/
-│   ├── config/               # DB and environment configuration
-│   ├── routes/               # API route definitions
-│   ├── middleware/            # Auth, error handling, logging
-│   ├── controllers/          # Request handlers
-│   ├── services/             # Business logic layer
-│   └── server.js             # Express server entry point
+├── frontend/                 # React + Vite app (port 5173)
+│   └── src/
+│       ├── pages/            # Dashboard, Inverters, Copilot, Alerts, ...
+│       ├── components/       # UI + dashboard widgets
+│       ├── context/          # Auth context
+│       └── services/api.js   # All backend calls
 │
-├── frontend/
-│   ├── src/
-│   │   ├── pages/            # Dashboard, Login, Alerts, etc.
-│   │   ├── components/       # Reusable UI components
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── services/         # API call utilities
-│   │   └── App.jsx           # Root component
-│   └── public/
+├── services/ml/              # Python Flask ML service (port 5001)
+│   ├── app.py                # Entry point
+│   ├── ml_routes.py          # /train, /predict, /predict/single, /status
+│   ├── forecast.py           # /forecast/upload, /forecast/next, /forecast/all
+│   ├── chat_routes.py        # /chat (Gemini)
+│   ├── inverter_pip_line.py  # Fault-prediction ensemble pipeline
+│   └── saved_models/         # Pre-trained per-inverter models
 │
-├── ml/
-│   ├── data/                 # Raw and processed telemetry data
-│   ├── features/             # Feature engineering scripts
-│   ├── models/               # Trained model artifacts (.pkl / .cbm)
-│   ├── training/             # Model training scripts
-│   ├── inference/            # Prediction API (FastAPI / Flask)
-│   └── evaluation/           # Model metrics and validation
-│
-├── docs/                     # Architecture diagrams and documentation
-├── .env.example              # Environment variable template
-├── package.json
-└── README.md
+├── docs/                     # Integration guide, prompt-engineering notes
+├── Plant1.ipynb, Plant3.ipynb# Research notebooks
+├── .env.example              # Environment variable template (copy to .env)
+├── docker-compose.yml        # Backend + ML service
+└── run_all.bat               # Windows: start all three services
 ```
 
 ### Backend Request Flow
@@ -460,64 +460,65 @@ The dashboard integrates the **Google Translate Widget**, enabling multilingual 
 ### Prerequisites
 
 - Node.js `v18+`
-- Python `3.10+`
-- PostgreSQL (or compatible Prisma database)
+- Python `3.10–3.12` (catboost/xgboost wheels)
+- A PostgreSQL database (e.g. Neon)
 
-### Clone the Repository
+### 1. Clone and configure
 
 ```bash
 git clone https://github.com/MLinej/SuryaKiran.git
-cd suryakiran
+cd SuryaKiran
+cp .env.example .env        # then fill in DATABASE_URL, JWT_SECRET, GEMINI_API_KEY
 ```
 
-### Backend Setup
+A single `.env` in the repo root is read by both the backend and the ML service.
+
+### 2. ML service (port 5001)
+
+```bash
+cd services/ml
+python -m venv .venv
+.venv/Scripts/activate      # Windows  (macOS/Linux: source .venv/bin/activate)
+pip install -r requirements.txt
+python app.py
+```
+
+### 3. Backend (port 5000)
 
 ```bash
 cd backend
 npm install
-npx prisma migrate dev     # Initialize database schema
-npm run dev                # Start backend server (port 5000)
+npx prisma generate         # generate the Prisma client
+# First time on an EMPTY database only:  npx prisma db push
+npm run dev
 ```
 
-### Frontend Setup
+### 4. Frontend (port 5173)
 
 ```bash
 cd frontend
 npm install
-npm start                  # Start React app (port 3000)
+npm run dev                 # optional: frontend/.env with VITE_API_BASE_URL
 ```
 
-### ML Inference Service Setup
-
-```bash
-cd ml
-pip install -r requirements.txt
-python inference/app.py    # Start prediction API (port 8000)
-```
+Open http://localhost:5173. On Windows, after the first-time install you can start everything with `run_all.bat`.
+Swagger docs are at http://localhost:5000/api-docs.
 
 ---
 
 ## 🔧 Environment Variables
 
-Create a `.env` file in the `backend/` directory:
+See [`.env.example`](.env.example):
 
-```env
-# Server
-PORT=5000
-
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/suryakiran
-
-# Authentication
-JWT_SECRET=your_jwt_secret_here
-JWT_EXPIRES_IN=7d
-
-# AI Copilot
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# ML Service
-ML_SERVICE_URL=http://localhost:8000
-```
+| Variable | Used by | Purpose |
+|---|---|---|
+| `DATABASE_URL` | backend | PostgreSQL connection string |
+| `JWT_SECRET` | backend | Signs login tokens |
+| `GEMINI_API_KEY` | backend, ML | AI Copilot (optional) |
+| `PORT` | backend | Default `5000` |
+| `ML_SERVICE_URL` | backend | Default `http://localhost:5001` |
+| `ML_PORT` | ML service | Default `5001` |
+| `VITE_API_BASE_URL` | frontend | Default `http://localhost:5000` |
 
 ---
 
